@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photography Portfolio</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <div class="hero-row">
+      <h1 id="photographer-name" class="hero-title">&nbsp;</h1>
+      <div class="hero-actions">
+        <nav id="social-row" class="social-row" aria-label="Social links"></nav>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
+          <span class="theme-icon" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="work" class="gallery-section">
+    <p id="empty-hint" class="empty-hint" hidden>
+      No photos yet &mdash; drop images into <code>images/</code>, then run <code>npm run build</code>. This placeholder gallery shows what the layout will look like.
+    </p>
+    <div id="gallery" class="masonry"></div>
+  </main>
+
+  <footer class="site-footer">Designed by Trent Bauer, built by Claude</footer>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>

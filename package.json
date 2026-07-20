@@ -1,0 +1,12 @@
+{
+  "name": "photography-portfolio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A minimal, framework-free photography portfolio. Drop full-res photos into images/, and a build step generates a fast, progressive-JPEG gallery sorted by upload date.",
+  "scripts": {
+    "build": "node scripts/build-gallery.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}
