@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photography Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -13,6 +16,7 @@
       <h1 id="photographer-name" class="hero-title">&nbsp;</h1>
       <div class="hero-actions">
         <nav id="social-row" class="social-row" aria-label="Social links"></nav>
+        <button id="gear-toggle" class="gear-toggle" type="button">Gear</button>
         <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" type="button">
           <span class="theme-icon" aria-hidden="true"></span>
         </button>
@@ -28,6 +32,12 @@
   </main>
 
   <footer class="site-footer">Designed by Trent Bauer, built by Claude</footer>
+</div>
+<div id="gear-modal" class="gear-modal" hidden>
+  <div class="gear-panel">
+    <button id="gear-close" class="gear-close" aria-label="Close" type="button">&times;</button>
+    <div id="gear-content" class="gear-content"></div>
+  </div>
 </div>
 <div id="lightbox" class="lightbox" hidden>
   <button id="lightbox-close" class="lightbox-close" aria-label="Close" type="button">&times;</button>

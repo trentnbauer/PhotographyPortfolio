@@ -29,6 +29,82 @@
     }
   }
 
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function renderInline(text) {
+    return escapeHtml(text)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  }
+
+  function renderMarkdown(md) {
+    let html = '';
+    let inList = false;
+    md.split('\n').forEach((rawLine) => {
+      const line = rawLine.trim();
+      if (!line) {
+        if (inList) { html += '</ul>'; inList = false; }
+        return;
+      }
+      const heading = line.match(/^(#{1,3})\s+(.*)/);
+      if (heading) {
+        if (inList) { html += '</ul>'; inList = false; }
+        html += `<h${heading[1].length}>${renderInline(heading[2])}</h${heading[1].length}>`;
+        return;
+      }
+      const listItem = line.match(/^[-*]\s+(.*)/);
+      if (listItem) {
+        if (!inList) { html += '<ul>'; inList = true; }
+        html += `<li>${renderInline(listItem[1])}</li>`;
+        return;
+      }
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<p>${renderInline(line)}</p>`;
+    });
+    if (inList) html += '</ul>';
+    return html;
+  }
+
+  function initGearModal() {
+    const modal = document.getElementById('gear-modal');
+    const content = document.getElementById('gear-content');
+    let loaded = false;
+
+    async function open() {
+      modal.hidden = false;
+      if (loaded) return;
+      const text = await (async () => {
+        try {
+          const res = await fetch('gear.md', { cache: 'no-store' });
+          return res.ok ? await res.text() : null;
+        } catch (e) {
+          return null;
+        }
+      })();
+      content.innerHTML = text ? renderMarkdown(text) : '<p>Could not load gear.md.</p>';
+      loaded = true;
+    }
+
+    function close() {
+      modal.hidden = true;
+    }
+
+    document.getElementById('gear-toggle').addEventListener('click', open);
+    document.getElementById('gear-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.hidden) close();
+    });
+  }
+
   function renderHero(config) {
     const name = config.photographerName || 'Your Name Here';
     document.title = `${name} — Photography`;
@@ -143,6 +219,7 @@
 
   async function init() {
     initTheme();
+    initGearModal();
     const openLightbox = initLightbox();
     const config = (await loadJSON('config.json')) || {};
     renderHero(config);

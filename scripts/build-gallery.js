@@ -14,7 +14,7 @@ const JPEG_QUALITY = 82;
 
 function copyStaticFiles() {
   fs.mkdirSync(DIST_DIR, { recursive: true });
-  for (const entry of ['index.html', 'config.json']) {
+  for (const entry of ['index.html', 'config.json', 'gear.md']) {
     fs.cpSync(path.join(ROOT, entry), path.join(DIST_DIR, entry));
   }
   for (const dir of ['css', 'js']) {
