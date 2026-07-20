@@ -150,12 +150,18 @@
     const spinner = document.getElementById('lightbox-spinner');
     const caption = document.getElementById('lightbox-caption');
     let loadToken = 0;
+    let historyPushed = false;
 
     function open(entry) {
       const token = ++loadToken;
       const src = entry.original || entry.file;
       lightboxImg.alt = entry.alt || '';
       lightbox.hidden = false;
+
+      if (!historyPushed) {
+        history.pushState({ lightboxOpen: true }, '');
+        historyPushed = true;
+      }
 
       if (entry.file) {
         lightboxImg.src = entry.file;
@@ -177,22 +183,31 @@
       full.src = src;
     }
 
-    function close() {
+    function close({ fromPopstate } = {}) {
+      if (lightbox.hidden) return;
       loadToken++;
       lightbox.hidden = true;
       lightboxImg.src = '';
       lightboxImg.classList.remove('is-loading');
       spinner.hidden = true;
       resetViewportZoom();
+
+      if (historyPushed) {
+        historyPushed = false;
+        // Closed via button/backdrop/Escape rather than the Back button itself —
+        // pop the state we pushed on open so a later Back press doesn't land on it.
+        if (!fromPopstate) history.back();
+      }
     }
 
-    document.getElementById('lightbox-close').addEventListener('click', close);
+    document.getElementById('lightbox-close').addEventListener('click', () => close());
     lightbox.addEventListener('click', (e) => {
       if (e.target === lightbox) close();
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !lightbox.hidden) close();
     });
+    window.addEventListener('popstate', () => close({ fromPopstate: true }));
 
     return open;
   }
