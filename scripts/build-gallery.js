@@ -22,20 +22,45 @@ function copyStaticFiles() {
   }
 }
 
-function gitAddedDate(absPath) {
-  const relPath = path.relative(ROOT, absPath);
+function loadGitAddedDates() {
+  const map = new Map();
   try {
     const log = execFileSync(
       'git',
-      ['log', '--diff-filter=A', '--follow', '--format=%aI', '--', relPath],
+      ['log', '--diff-filter=A', '--format=%x00%aI', '--name-only', '--', 'images/'],
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
-    ).trim();
-    const lines = log.split('\n').filter(Boolean);
-    if (lines.length) return lines[lines.length - 1];
+    );
+    let currentDate = null;
+    for (const line of log.split('\n')) {
+      if (line.startsWith('\0')) {
+        currentDate = line.slice(1);
+      } else if (line.trim()) {
+        // git log runs newest-first, so the last write for a path wins (earliest add)
+        map.set(line.trim(), currentDate);
+      }
+    }
   } catch (e) {
-    // not tracked yet (e.g. local preview before first commit) — fall through
+    // no git history available (e.g. fresh checkout) — callers fall back to mtime
   }
-  return fs.statSync(absPath).mtime.toISOString();
+  return map;
+}
+
+function gitAddedDate(absPath, datesMap) {
+  const relPath = path.relative(ROOT, absPath).split(path.sep).join('/');
+  return datesMap.get(relPath) || fs.statSync(absPath).mtime.toISOString();
+}
+
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 function slugify(file) {
@@ -89,31 +114,37 @@ async function processImages() {
 
   const repoSlug = getRepoSlug();
   const branch = getBranch();
+  const gitDates = loadGitAddedDates();
 
-  const entries = [];
-  for (const file of files) {
+  const entries = await mapWithConcurrency(files, 8, async (file) => {
     const srcPath = path.join(IMAGES_DIR, file);
     const outName = `${slugify(file)}.jpg`;
     const outPath = path.join(DIST_IMAGES_DIR, outName);
 
-    const image = sharp(srcPath).rotate();
-    const resized = image.resize({
-      width: MAX_DIMENSION,
-      height: MAX_DIMENSION,
-      fit: 'inside',
-      withoutEnlargement: true,
-    });
-    const metadata = await resized.jpeg({ quality: JPEG_QUALITY, progressive: true }).toFile(outPath);
+    let metadata;
+    const srcMtime = fs.statSync(srcPath).mtimeMs;
+    if (fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= srcMtime) {
+      metadata = await sharp(outPath).metadata();
+    } else {
+      const image = sharp(srcPath).rotate();
+      const resized = image.resize({
+        width: MAX_DIMENSION,
+        height: MAX_DIMENSION,
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+      metadata = await resized.jpeg({ quality: JPEG_QUALITY, progressive: true }).toFile(outPath);
+    }
 
-    entries.push({
+    return {
       file: `images/${outName}`,
       original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
       alt: labelFromFilename(file),
-      date: gitAddedDate(srcPath),
+      date: gitAddedDate(srcPath, gitDates),
       width: metadata.width,
       height: metadata.height,
-    });
-  }
+    };
+  });
 
   entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 

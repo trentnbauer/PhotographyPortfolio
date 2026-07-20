@@ -126,6 +126,19 @@ a { text-decoration: none; color: inherit; }
   column-gap: 16px;
 }
 
+@media (max-width: 600px) {
+  .masonry {
+    column-count: 2;
+    column-width: auto;
+    column-gap: 10px;
+  }
+
+  .photo-item,
+  .placeholder-item {
+    margin-bottom: 10px;
+  }
+}
+
 .photo-item,
 .placeholder-item {
   display: block;
