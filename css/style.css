@@ -37,16 +37,19 @@ a { text-decoration: none; color: inherit; }
   padding: clamp(20px, 4vw, 28px) clamp(20px, 4vw, 48px) 24px;
 }
 
+.hero-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+}
+
 .hero-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  max-width: 1400px;
-  margin: 0 auto;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 24px;
 }
 
 .hero-title {
@@ -58,7 +61,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .hero-tagline {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: clamp(13px, 2vw, 15px);
   color: var(--muted);
 }
