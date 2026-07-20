@@ -2,6 +2,7 @@
   const root = document.documentElement;
   const THEME_KEY = 'photo-portfolio-theme';
   const SOCIAL_LABELS = { instagram: 'IG', twitter: 'X', behance: 'Bē' };
+  const INSTAGRAM_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><circle cx="17.5" cy="6.5" r="1"></circle></svg>';
 
   function applyTheme(theme) {
     if (theme === 'dark') root.setAttribute('data-theme', 'dark');
@@ -124,27 +125,42 @@
       a.rel = 'noopener noreferrer';
       a.className = 'social-link';
       a.setAttribute('aria-label', key);
-      a.textContent = label;
+      if (key === 'instagram') a.innerHTML = INSTAGRAM_ICON;
+      else a.textContent = label;
       row.appendChild(a);
     });
+  }
+
+  function resetViewportZoom() {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return;
+    const original = viewport.getAttribute('content');
+    viewport.setAttribute('content', `${original}, maximum-scale=1.0`);
+    setTimeout(() => viewport.setAttribute('content', original), 350);
   }
 
   function initLightbox() {
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const spinner = document.getElementById('lightbox-spinner');
+    const caption = document.getElementById('lightbox-caption');
     let loadToken = 0;
 
-    function open(src, alt, thumbSrc) {
+    function open(entry) {
       const token = ++loadToken;
-      lightboxImg.alt = alt || '';
+      const src = entry.original || entry.file;
+      lightboxImg.alt = entry.alt || '';
       lightbox.hidden = false;
 
-      if (thumbSrc) {
-        lightboxImg.src = thumbSrc;
+      if (entry.file) {
+        lightboxImg.src = entry.file;
         lightboxImg.classList.add('is-loading');
         spinner.hidden = false;
       }
+
+      const captionText = [entry.camera, entry.film].filter(Boolean).join(' · ');
+      caption.textContent = captionText;
+      caption.hidden = !captionText;
 
       const full = new Image();
       full.onload = () => {
@@ -162,6 +178,7 @@
       lightboxImg.src = '';
       lightboxImg.classList.remove('is-loading');
       spinner.hidden = true;
+      resetViewportZoom();
     }
 
     document.getElementById('lightbox-close').addEventListener('click', close);
@@ -197,7 +214,7 @@
           img.height = entry.height;
         }
         item.appendChild(img);
-        item.addEventListener('click', () => openLightbox(entry.original || entry.file, entry.alt, entry.file));
+        item.addEventListener('click', () => openLightbox(entry));
         gallery.appendChild(item);
       });
       return;

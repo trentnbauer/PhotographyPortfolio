@@ -75,6 +75,26 @@ function labelFromFilename(file) {
   return path.parse(file).name.replace(/[-_]+/g, ' ');
 }
 
+function humanizeToken(token) {
+  return token
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2')
+    .replace(/(\d)([A-Za-z])/g, '$1 $2')
+    .trim();
+}
+
+// Filenames follow {year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}, e.g.
+// "2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg" — camera and film stock
+// are always the 3rd and 4th hyphen-separated segments.
+function parseFilenameMeta(file) {
+  const tokens = path.parse(file).name.split('-');
+  if (tokens.length < 4) return {};
+  return {
+    camera: humanizeToken(tokens[2]),
+    film: humanizeToken(tokens[3]),
+  };
+}
+
 function getRepoSlug() {
   if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
   try {
@@ -136,6 +156,8 @@ async function processImages() {
       metadata = await resized.jpeg({ quality: JPEG_QUALITY, progressive: true }).toFile(outPath);
     }
 
+    const { camera, film } = parseFilenameMeta(file);
+
     return {
       file: `images/${outName}`,
       original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
@@ -143,6 +165,8 @@ async function processImages() {
       date: gitAddedDate(srcPath, gitDates),
       width: metadata.width,
       height: metadata.height,
+      camera,
+      film,
     };
   });
 
