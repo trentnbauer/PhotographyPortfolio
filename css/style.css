@@ -1,6 +1,7 @@
 :root {
   --accent: oklch(0.58 0.13 35);
   --bg: oklch(0.98 0.004 90);
+  --bg-shimmer: oklch(0.90 0.006 90);
   --fg: oklch(0.15 0.005 90);
   --muted: oklch(0.42 0.01 90);
   --border: oklch(0.85 0.006 90);
@@ -11,6 +12,7 @@
 
 :root[data-theme="dark"] {
   --bg: oklch(0.16 0.005 90);
+  --bg-shimmer: oklch(0.27 0.008 90);
   --fg: oklch(0.95 0.004 90);
   --muted: oklch(0.65 0.01 90);
   --border: oklch(0.32 0.008 90);
@@ -24,13 +26,26 @@ body { margin: 0; font-family: var(--font); }
 a { text-decoration: none; color: inherit; }
 
 .page {
-  background: var(--bg);
+  background: linear-gradient(120deg, var(--bg) 0%, var(--bg-shimmer) 50%, var(--bg) 100%);
+  background-size: 180% 180%;
+  animation: bg-shimmer 22s ease-in-out infinite;
   color: var(--fg);
   font-family: var(--font);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
+}
+
+@keyframes bg-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page {
+    animation: none;
+  }
 }
 
 .hero {
