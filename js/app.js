@@ -111,6 +111,10 @@
     document.title = `${name} — Photography`;
     document.getElementById('photographer-name').textContent = name;
 
+    const taglineEl = document.getElementById('tagline');
+    taglineEl.textContent = config.tagline || '';
+    taglineEl.hidden = !config.tagline;
+
     root.style.setProperty('--accent', config.accentColor || 'oklch(0.58 0.13 35)');
 
     const social = config.social || {};
