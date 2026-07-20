@@ -17,8 +17,8 @@
 - Helios 44 48mm f2 m39
 
 # Film Stocks
-I generally shoot on Kodak film stock, in particular the Kodak ColorPlus 200, though I do buy a lot of expired film to experiment with.
-I haven't decided on an 800 ISO speed stock yet (for the SRT Super)
+- Kodak ColorPlus 200
+- Random expired stock
 
 # Other Gear
 - Minolta Rose filters
@@ -26,7 +26,7 @@ I haven't decided on an 800 ISO speed stock yet (for the SRT Super)
 - Peak Design straps and bags
 
 # Tools I use
-- [Film Calculator](https://filmcalc.app) (Calculates the price of film)
+- [FilmCalc](https://filmcalc.app) (Calculates the price of shooting film - useful for comparing film stocks or labs)
 - [Light Meter](https://play.google.com/store/apps/details?id=com.willblaschko.android.lightmeterv2.pro) (for the cameras without built in light meters)
 
 
