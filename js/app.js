@@ -73,7 +73,7 @@
     return html;
   }
 
-  function initGearModal() {
+  function initGearModal(gearUrl) {
     const modal = document.getElementById('gear-modal');
     const content = document.getElementById('gear-content');
     let loaded = false;
@@ -83,7 +83,7 @@
       if (loaded) return;
       const text = await (async () => {
         try {
-          const res = await fetch('gear.md', { cache: 'no-store' });
+          const res = await fetch(gearUrl || 'gear.md', { cache: 'no-store' });
           return res.ok ? await res.text() : null;
         } catch (e) {
           return null;
@@ -241,9 +241,9 @@
 
   async function init() {
     initTheme();
-    initGearModal();
     const openLightbox = initLightbox();
     const config = (await loadJSON('config.json')) || {};
+    initGearModal(config.gearUrl);
     renderHero(config);
     renderGallery(await loadJSON('images/manifest.json'), openLightbox);
   }

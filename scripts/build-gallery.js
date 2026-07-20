@@ -12,11 +12,20 @@ const EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '
 const MAX_DIMENSION = 2400;
 const JPEG_QUALITY = 82;
 
-function copyStaticFiles() {
+function copyStaticFiles(repoSlug, branch) {
   fs.mkdirSync(DIST_DIR, { recursive: true });
-  for (const entry of ['index.html', 'config.json', 'gear.md']) {
-    fs.cpSync(path.join(ROOT, entry), path.join(DIST_DIR, entry));
-  }
+  fs.cpSync(path.join(ROOT, 'index.html'), path.join(DIST_DIR, 'index.html'));
+  fs.cpSync(path.join(ROOT, 'gear.md'), path.join(DIST_DIR, 'gear.md'));
+
+  const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+  // Fetched live from GitHub's raw content at runtime so gear.md edits show up
+  // without needing a full rebuild — falls back to the bundled copy when
+  // there's no known repo (e.g. a local checkout with no git remote).
+  config.gearUrl = repoSlug
+    ? `https://raw.githubusercontent.com/${repoSlug}/${branch}/gear.md`
+    : 'gear.md';
+  fs.writeFileSync(path.join(DIST_DIR, 'config.json'), JSON.stringify(config, null, 2) + '\n');
+
   for (const dir of ['css', 'js']) {
     fs.cpSync(path.join(ROOT, dir), path.join(DIST_DIR, dir), { recursive: true });
   }
@@ -120,7 +129,7 @@ function originalUrl(repoSlug, branch, file) {
   return `https://raw.githubusercontent.com/${repoSlug}/${branch}/images/${encodeURIComponent(file)}`;
 }
 
-async function processImages() {
+async function processImages(repoSlug, branch) {
   if (!fs.existsSync(IMAGES_DIR)) {
     console.log('No images/ directory found — skipping gallery, placeholder will render.');
     return [];
@@ -132,8 +141,6 @@ async function processImages() {
 
   fs.mkdirSync(DIST_IMAGES_DIR, { recursive: true });
 
-  const repoSlug = getRepoSlug();
-  const branch = getBranch();
   const gitDates = loadGitAddedDates();
 
   const entries = await mapWithConcurrency(files, 8, async (file) => {
@@ -177,8 +184,10 @@ async function processImages() {
 }
 
 async function main() {
-  copyStaticFiles();
-  const entries = await processImages();
+  const repoSlug = getRepoSlug();
+  const branch = getBranch();
+  copyStaticFiles(repoSlug, branch);
+  const entries = await processImages(repoSlug, branch);
   console.log(`Built ${entries.length} image(s) into dist/, sorted newest first.`);
 }
 
