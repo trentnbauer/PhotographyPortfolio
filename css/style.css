@@ -137,6 +137,14 @@ a { text-decoration: none; color: inherit; }
   cursor: pointer;
 }
 
+.photo-item {
+  width: 100%;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
 .masonry img {
   display: block;
   width: 100%;
@@ -157,6 +165,61 @@ a { text-decoration: none; color: inherit; }
   background: var(--bg);
   padding: 2px 6px;
   border: 1px solid var(--border);
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: oklch(0.1 0 0 / 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 48px);
+  z-index: 100;
+}
+
+.lightbox[hidden] {
+  display: none;
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  box-shadow: 0 8px 40px oklch(0 0 0 / 0.4);
+  transition: filter 0.25s ease;
+}
+
+.lightbox-img.is-loading {
+  filter: blur(12px) brightness(0.85);
+}
+
+.lightbox-spinner {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border: 3px solid oklch(1 0 0 / 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: lightbox-spin 0.8s linear infinite;
+}
+
+@keyframes lightbox-spin {
+  to { transform: rotate(360deg); }
+}
+
+.lightbox-close {
+  position: absolute;
+  top: clamp(12px, 3vw, 24px);
+  right: clamp(12px, 3vw, 24px);
+  width: 40px;
+  height: 40px;
+  border: 1px solid oklch(1 0 0 / 0.3);
+  background: transparent;
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .site-footer {

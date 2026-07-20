@@ -53,7 +53,53 @@
     });
   }
 
-  function renderGallery(manifest) {
+  function initLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const spinner = document.getElementById('lightbox-spinner');
+    let loadToken = 0;
+
+    function open(src, alt, thumbSrc) {
+      const token = ++loadToken;
+      lightboxImg.alt = alt || '';
+      lightbox.hidden = false;
+
+      if (thumbSrc) {
+        lightboxImg.src = thumbSrc;
+        lightboxImg.classList.add('is-loading');
+        spinner.hidden = false;
+      }
+
+      const full = new Image();
+      full.onload = () => {
+        if (token !== loadToken) return;
+        lightboxImg.src = src;
+        lightboxImg.classList.remove('is-loading');
+        spinner.hidden = true;
+      };
+      full.src = src;
+    }
+
+    function close() {
+      loadToken++;
+      lightbox.hidden = true;
+      lightboxImg.src = '';
+      lightboxImg.classList.remove('is-loading');
+      spinner.hidden = true;
+    }
+
+    document.getElementById('lightbox-close').addEventListener('click', close);
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !lightbox.hidden) close();
+    });
+
+    return open;
+  }
+
+  function renderGallery(manifest, openLightbox) {
     const gallery = document.getElementById('gallery');
     const hint = document.getElementById('empty-hint');
     gallery.innerHTML = '';
@@ -61,12 +107,10 @@
     if (manifest && manifest.length) {
       hint.hidden = true;
       manifest.forEach((entry) => {
-        const link = document.createElement('a');
-        link.className = 'photo-item';
-        link.href = entry.original || entry.file;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.title = 'View original file';
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'photo-item';
+        item.title = 'View full-size photo';
 
         const img = document.createElement('img');
         img.src = entry.file;
@@ -76,8 +120,9 @@
           img.width = entry.width;
           img.height = entry.height;
         }
-        link.appendChild(img);
-        gallery.appendChild(link);
+        item.appendChild(img);
+        item.addEventListener('click', () => openLightbox(entry.original || entry.file, entry.alt, entry.file));
+        gallery.appendChild(item);
       });
       return;
     }
@@ -98,9 +143,10 @@
 
   async function init() {
     initTheme();
+    const openLightbox = initLightbox();
     const config = (await loadJSON('config.json')) || {};
     renderHero(config);
-    renderGallery(await loadJSON('images/manifest.json'));
+    renderGallery(await loadJSON('images/manifest.json'), openLightbox);
   }
 
   init();
