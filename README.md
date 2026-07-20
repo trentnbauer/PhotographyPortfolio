@@ -60,6 +60,12 @@ placeholder gallery so you can see the layout.
 - The workflow deploys the built output directly to GitHub Pages. Nothing is
   written back to your `main` branch; resized images and the manifest are
   regenerated fresh on every push.
+- Clicking a gallery photo opens the **original, untouched file** (full
+  resolution, no compression applied) directly from the repo via
+  `raw.githubusercontent.com`, in a new tab. Only the small gallery thumbnail
+  is lossy-compressed — the original is never modified and isn't duplicated
+  into the deployed site, so a large library of full-res scans doesn't risk
+  hitting GitHub Pages' recommended ~1GB site size.
 
 Because everything (code, config, photos) is public in this repo, there are
 no secrets or credentials to manage — the whole pipeline runs on GitHub's

@@ -50,6 +50,31 @@ function labelFromFilename(file) {
   return path.parse(file).name.replace(/[-_]+/g, ' ');
 }
 
+function getRepoSlug() {
+  if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
+  try {
+    const url = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const match = url.match(/[:/]([^/]+\/[^/]+?)(\.git)?$/);
+    if (match) return match[1];
+  } catch (e) {
+    // no git remote available (e.g. fresh local checkout) — fall through
+  }
+  return null;
+}
+
+function getBranch() {
+  return process.env.GITHUB_REF_NAME || 'main';
+}
+
+function originalUrl(repoSlug, branch, file) {
+  if (!repoSlug) return null;
+  return `https://raw.githubusercontent.com/${repoSlug}/${branch}/images/${encodeURIComponent(file)}`;
+}
+
 async function processImages() {
   if (!fs.existsSync(IMAGES_DIR)) {
     console.log('No images/ directory found — skipping gallery, placeholder will render.');
@@ -61,6 +86,9 @@ async function processImages() {
     .filter((file) => EXTENSIONS.has(path.extname(file).toLowerCase()));
 
   fs.mkdirSync(DIST_IMAGES_DIR, { recursive: true });
+
+  const repoSlug = getRepoSlug();
+  const branch = getBranch();
 
   const entries = [];
   for (const file of files) {
@@ -79,6 +107,7 @@ async function processImages() {
 
     entries.push({
       file: `images/${outName}`,
+      original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
       alt: labelFromFilename(file),
       date: gitAddedDate(srcPath),
       width: metadata.width,

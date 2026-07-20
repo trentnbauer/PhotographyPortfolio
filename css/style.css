@@ -126,13 +126,15 @@ a { text-decoration: none; color: inherit; }
   column-gap: 16px;
 }
 
-.masonry figure,
+.photo-item,
 .placeholder-item {
+  display: block;
   break-inside: avoid;
   margin: 0 0 16px;
   position: relative;
   border: 1px solid var(--border);
   overflow: hidden;
+  cursor: pointer;
 }
 
 .masonry img {

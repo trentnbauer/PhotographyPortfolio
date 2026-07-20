@@ -61,7 +61,13 @@
     if (manifest && manifest.length) {
       hint.hidden = true;
       manifest.forEach((entry) => {
-        const figure = document.createElement('figure');
+        const link = document.createElement('a');
+        link.className = 'photo-item';
+        link.href = entry.original || entry.file;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.title = 'View original file';
+
         const img = document.createElement('img');
         img.src = entry.file;
         img.loading = 'lazy';
@@ -70,8 +76,8 @@
           img.width = entry.width;
           img.height = entry.height;
         }
-        figure.appendChild(img);
-        gallery.appendChild(figure);
+        link.appendChild(img);
+        gallery.appendChild(link);
       });
       return;
     }
