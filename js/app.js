@@ -11,7 +11,8 @@
 
   function initTheme() {
     const saved = localStorage.getItem(THEME_KEY);
-    applyTheme(saved === 'dark' ? 'dark' : 'light');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(saved || (prefersDark ? 'dark' : 'light'));
 
     document.getElementById('theme-toggle').addEventListener('click', () => {
       const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
