@@ -31,34 +31,6 @@ function copyStaticFiles(repoSlug, branch) {
   }
 }
 
-function loadGitAddedDates() {
-  const map = new Map();
-  try {
-    const log = execFileSync(
-      'git',
-      ['log', '--diff-filter=A', '--format=%x00%aI', '--name-only', '--', 'images/'],
-      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
-    );
-    let currentDate = null;
-    for (const line of log.split('\n')) {
-      if (line.startsWith('\0')) {
-        currentDate = line.slice(1);
-      } else if (line.trim()) {
-        // git log runs newest-first, so the last write for a path wins (earliest add)
-        map.set(line.trim(), currentDate);
-      }
-    }
-  } catch (e) {
-    // no git history available (e.g. fresh checkout) — callers fall back to mtime
-  }
-  return map;
-}
-
-function gitAddedDate(absPath, datesMap) {
-  const relPath = path.relative(ROOT, absPath).split(path.sep).join('/');
-  return datesMap.get(relPath) || fs.statSync(absPath).mtime.toISOString();
-}
-
 async function mapWithConcurrency(items, limit, fn) {
   const results = new Array(items.length);
   let next = 0;
@@ -93,15 +65,45 @@ function humanizeToken(token) {
 }
 
 // Filenames follow {year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}, e.g.
-// "2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg" — camera and film stock
-// are always the 3rd and 4th hyphen-separated segments.
-function parseFilenameMeta(file) {
-  const tokens = path.parse(file).name.split('-');
-  if (tokens.length < 4) return {};
+// "2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg" or, without a roll number,
+// "2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg". Scanner/editor-embedded photo
+// metadata turned out to be unreliable across the library (present on some
+// files, present-but-blank on others, absent elsewhere), so both the gallery
+// order and the camera/film caption are derived entirely from this naming
+// convention, which is the one thing guaranteed present on every file.
+const SEASONS = ['Summer', 'Autumn', 'Winter', 'Spring'];
+const FILENAME_PATTERN = /^(\d{4})-(Summer|Autumn|Winter|Spring)-([^-]+)-([^-]+)-(?:R(\d+)-)?(\d+)$/;
+
+function parseFilename(file) {
+  const match = path.parse(file).name.match(FILENAME_PATTERN);
+  if (!match) return null;
+  const [, year, season, camera, film, roll, frame] = match;
   return {
-    camera: humanizeToken(tokens[2]),
-    film: humanizeToken(tokens[3]),
+    year: Number(year),
+    season,
+    seasonIndex: SEASONS.indexOf(season),
+    camera: humanizeToken(camera),
+    film: humanizeToken(film),
+    roll: roll ? Number(roll) : 0,
+    frame: Number(frame),
   };
+}
+
+// Sorts newest first: later year, then later season, then later roll, then
+// later frame. Files that don't match the naming convention (meta === null)
+// sort last, since there's nothing to rank them by.
+function recencyRank(meta) {
+  if (!meta) return [-Infinity, -Infinity, -Infinity, -Infinity];
+  return [meta.year, meta.seasonIndex, meta.roll, meta.frame];
+}
+
+function compareByRecency(metaA, metaB) {
+  const a = recencyRank(metaA);
+  const b = recencyRank(metaB);
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return b[i] - a[i];
+  }
+  return 0;
 }
 
 function getRepoSlug() {
@@ -141,9 +143,7 @@ async function processImages(repoSlug, branch) {
 
   fs.mkdirSync(DIST_IMAGES_DIR, { recursive: true });
 
-  const gitDates = loadGitAddedDates();
-
-  const entries = await mapWithConcurrency(files, 8, async (file) => {
+  const built = await mapWithConcurrency(files, 8, async (file) => {
     const srcPath = path.join(IMAGES_DIR, file);
     const outName = `${slugify(file)}.jpg`;
     const outPath = path.join(DIST_IMAGES_DIR, outName);
@@ -163,21 +163,28 @@ async function processImages(repoSlug, branch) {
       metadata = await resized.jpeg({ quality: JPEG_QUALITY, progressive: true }).toFile(outPath);
     }
 
-    const { camera, film } = parseFilenameMeta(file);
+    const meta = parseFilename(file);
+    if (!meta) {
+      console.warn(`Warning: "${file}" doesn't match the expected naming pattern — it will sort last and show no camera/film caption.`);
+    }
 
     return {
-      file: `images/${outName}`,
-      original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
-      alt: labelFromFilename(file),
-      date: gitAddedDate(srcPath, gitDates),
-      width: metadata.width,
-      height: metadata.height,
-      camera,
-      film,
+      meta,
+      entry: {
+        file: `images/${outName}`,
+        original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
+        alt: labelFromFilename(file),
+        date: meta ? `${meta.season} ${meta.year}` : null,
+        width: metadata.width,
+        height: metadata.height,
+        camera: meta ? meta.camera : undefined,
+        film: meta ? meta.film : undefined,
+      },
     };
   });
 
-  entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+  built.sort((a, b) => compareByRecency(a.meta, b.meta));
+  const entries = built.map((b) => b.entry);
 
   fs.writeFileSync(path.join(DIST_IMAGES_DIR, 'manifest.json'), JSON.stringify(entries, null, 2) + '\n');
   return entries;
