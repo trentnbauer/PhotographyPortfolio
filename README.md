@@ -29,7 +29,8 @@ build-on-push pipeline possible for free (see [How it works](#how-it-works)).
    Leave any social URL blank to hide that icon. `accentColor` accepts any
    valid CSS color (oklch, hex, etc).
 3. Drop your photos into `images/` (jpg, jpeg, png, webp, tiff, gif, avif —
-   any resolution, GitHub's limit is 100MB per file).
+   any resolution, GitHub's limit is 100MB per file), named following the
+   [filename convention](#filename-convention) below.
 4. Commit and push. GitHub Actions takes it from there.
 5. Turn on GitHub Pages once (Settings → Pages → Source: **GitHub Actions**).
    After the first successful workflow run, your site is live at
@@ -55,8 +56,8 @@ placeholder gallery so you can see the layout.
   photos appear to load fast-then-sharpen with no extra thumbnail files or
   infrastructure needed.
 - The build also writes `images/manifest.json` (inside the build output only,
-  not committed) listing every photo with its upload date — taken from the
-  git commit that first added the file — sorted newest first.
+  not committed) listing every photo, sorted newest first by the year/season/
+  roll/frame encoded in its filename (see [Filename convention](#filename-convention)).
 - The workflow deploys the built output directly to GitHub Pages. Nothing is
   written back to your `main` branch; resized images and the manifest are
   regenerated fresh on every push.
@@ -70,6 +71,26 @@ placeholder gallery so you can see the layout.
 Because everything (code, config, photos) is public in this repo, there are
 no secrets or credentials to manage — the whole pipeline runs on GitHub's
 free Actions minutes for public repos and free GitHub Pages hosting.
+
+## Filename convention
+
+Photo metadata from scanners/film-editing software turned out to be
+unreliable — present on some files, present-but-blank on others, absent
+elsewhere — so gallery order and the camera/film caption shown in the
+lightbox are both derived entirely from the filename instead:
+
+```
+{year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}
+```
+
+For example `2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg`, or without a
+roll number, `2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg`. `season` must be
+one of `Summer`, `Autumn`, `Winter`, `Spring`. Photos are sorted newest
+first by year, then season, then roll, then frame — so within a roll, later
+frame numbers should be later shots. A file that doesn't match this pattern
+still builds and displays fine, just without a camera/film caption, and
+sorts to the end of the gallery (a build-time warning is logged so it's easy
+to spot a typo in a filename).
 
 ## Custom domain + SSL
 
