@@ -164,15 +164,17 @@
     setTimeout(() => viewport.setAttribute('content', original), 350);
   }
 
-  function initLightbox() {
+  function initLightbox(manifest) {
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const spinner = document.getElementById('lightbox-spinner');
     const caption = document.getElementById('lightbox-caption');
     let loadToken = 0;
     let historyPushed = false;
+    let currentIndex = -1;
 
     function open(entry) {
+      currentIndex = manifest.indexOf(entry);
       const token = ++loadToken;
       const src = entry.original || entry.file;
       lightboxImg.alt = entry.alt || '';
@@ -206,6 +208,13 @@
       full.src = src;
     }
 
+    // Wraps at either end of the gallery rather than clamping.
+    function showRelative(delta) {
+      if (lightbox.hidden || !manifest.length) return;
+      const next = (currentIndex + delta + manifest.length) % manifest.length;
+      open(manifest[next]);
+    }
+
     function close({ fromPopstate } = {}) {
       if (lightbox.hidden) return;
       loadToken++;
@@ -229,7 +238,10 @@
       if (e.target === lightbox) close();
     });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !lightbox.hidden) close();
+      if (lightbox.hidden) return;
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight') showRelative(1);
+      else if (e.key === 'ArrowLeft') showRelative(-1);
     });
     window.addEventListener('popstate', () => close({ fromPopstate: true }));
 
@@ -280,11 +292,12 @@
 
   async function init() {
     initTheme();
-    const openLightbox = initLightbox();
     const config = (await loadJSON('config.json')) || {};
     initGearModal(config.gearUrl);
     renderHero(config);
-    renderGallery(await loadJSON('images/manifest.json'), openLightbox);
+    const manifest = await loadJSON('images/manifest.json');
+    const openLightbox = initLightbox(manifest || []);
+    renderGallery(manifest, openLightbox);
   }
 
   init();
