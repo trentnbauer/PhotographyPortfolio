@@ -143,10 +143,18 @@ async function processImages(repoSlug, branch) {
 
   fs.mkdirSync(DIST_IMAGES_DIR, { recursive: true });
 
+  const outNameSources = new Map();
+
   const built = await mapWithConcurrency(files, 8, async (file) => {
     const srcPath = path.join(IMAGES_DIR, file);
     const outName = `${slugify(file)}.jpg`;
     const outPath = path.join(DIST_IMAGES_DIR, outName);
+
+    const collidesWith = outNameSources.get(outName);
+    if (collidesWith) {
+      throw new Error(`Filename collision: "${file}" and "${collidesWith}" both produce "${outName}" — rename one of them.`);
+    }
+    outNameSources.set(outName, file);
 
     let metadata;
     const srcMtime = fs.statSync(srcPath).mtimeMs;

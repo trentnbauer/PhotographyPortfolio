@@ -22,6 +22,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; font-family: var(--font); }
+body.scroll-locked { overflow: hidden; }
 ::selection { background: var(--accent); color: #fff; }
 a { text-decoration: none; color: inherit; }
 
