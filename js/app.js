@@ -4,6 +4,20 @@
   const SOCIAL_LABELS = { instagram: 'IG', twitter: 'X', behance: 'Bē' };
   const INSTAGRAM_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><circle cx="17.5" cy="6.5" r="1"></circle></svg>';
 
+  const bodyScrollLock = (() => {
+    let count = 0;
+    return {
+      lock() {
+        count++;
+        document.body.classList.add('scroll-locked');
+      },
+      unlock() {
+        count = Math.max(0, count - 1);
+        if (count === 0) document.body.classList.remove('scroll-locked');
+      },
+    };
+  })();
+
   function applyTheme(theme) {
     if (theme === 'dark') root.setAttribute('data-theme', 'dark');
     else root.removeAttribute('data-theme');
@@ -35,7 +49,9 @@
     return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function renderInline(text) {
@@ -79,7 +95,9 @@
     let loaded = false;
 
     async function open() {
+      if (!modal.hidden) return;
       modal.hidden = false;
+      bodyScrollLock.lock();
       if (loaded) return;
       const text = await (async () => {
         try {
@@ -94,7 +112,9 @@
     }
 
     function close() {
+      if (modal.hidden) return;
       modal.hidden = true;
+      bodyScrollLock.unlock();
     }
 
     document.getElementById('gear-toggle').addEventListener('click', open);
@@ -156,7 +176,10 @@
       const token = ++loadToken;
       const src = entry.original || entry.file;
       lightboxImg.alt = entry.alt || '';
-      lightbox.hidden = false;
+      if (lightbox.hidden) {
+        lightbox.hidden = false;
+        bodyScrollLock.lock();
+      }
 
       if (!historyPushed) {
         history.pushState({ lightboxOpen: true }, '');
@@ -187,6 +210,7 @@
       if (lightbox.hidden) return;
       loadToken++;
       lightbox.hidden = true;
+      bodyScrollLock.unlock();
       lightboxImg.src = '';
       lightboxImg.classList.remove('is-loading');
       spinner.hidden = true;
