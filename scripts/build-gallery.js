@@ -12,10 +12,37 @@ const EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '
 const MAX_DIMENSION = 2400;
 const JPEG_QUALITY = 82;
 
-function copyStaticFiles(repoSlug, branch) {
+function escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Social/link-preview crawlers read the static HTML and don't run
+// js/app.js, so — unlike the rest of the page's config-driven content,
+// which is rendered client-side — these tags have to be baked into
+// dist/index.html at build time.
+function buildOgMeta(config, entries) {
+  const title = config.photographerName ? `${config.photographerName} — Photography` : 'Photography Portfolio';
+  const description = config.tagline || 'A photography portfolio.';
+  const tags = [
+    '<meta property="og:type" content="website">',
+    `<meta property="og:title" content="${escapeAttr(title)}">`,
+    `<meta property="og:description" content="${escapeAttr(description)}">`,
+    '<meta name="twitter:card" content="summary_large_image">',
+  ];
+  const newest = entries[0];
+  if (newest) {
+    tags.push(`<meta property="og:image" content="${escapeAttr(newest.original)}">`);
+  }
+  return tags.join('\n');
+}
+
+function copyStaticFiles(repoSlug, branch, entries) {
   fs.mkdirSync(DIST_DIR, { recursive: true });
-  fs.cpSync(path.join(ROOT, 'index.html'), path.join(DIST_DIR, 'index.html'));
-  fs.cpSync(path.join(ROOT, 'gear.md'), path.join(DIST_DIR, 'gear.md'));
 
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
   // Fetched live from GitHub's raw content at runtime so gear.md edits show up
@@ -25,6 +52,13 @@ function copyStaticFiles(repoSlug, branch) {
     ? `https://raw.githubusercontent.com/${repoSlug}/${branch}/gear.md`
     : 'gear.md';
   fs.writeFileSync(path.join(DIST_DIR, 'config.json'), JSON.stringify(config, null, 2) + '\n');
+
+  const indexHtml = fs
+    .readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+    .replace('<!--OG_META-->', buildOgMeta(config, entries));
+  fs.writeFileSync(path.join(DIST_DIR, 'index.html'), indexHtml);
+
+  fs.cpSync(path.join(ROOT, 'gear.md'), path.join(DIST_DIR, 'gear.md'));
 
   for (const dir of ['css', 'js']) {
     fs.cpSync(path.join(ROOT, dir), path.join(DIST_DIR, dir), { recursive: true });
@@ -201,8 +235,8 @@ async function processImages(repoSlug, branch) {
 async function main() {
   const repoSlug = getRepoSlug();
   const branch = getBranch();
-  copyStaticFiles(repoSlug, branch);
   const entries = await processImages(repoSlug, branch);
+  copyStaticFiles(repoSlug, branch, entries);
   console.log(`Built ${entries.length} image(s) into dist/, sorted newest first.`);
 }
 
