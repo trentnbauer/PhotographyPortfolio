@@ -1,21 +1,22 @@
 # Cameras and Lenses
 ## Minolta
 - SRT 303
-- SRT Super (black)
+- SRT Super
 - PF 58mm f1.4
 - PG 50mm f1.4
 - SG 28mm f3.5
 - PF 135mm f2.8 
 
 ## Leitz
-- 1949 Leica IIIc 
+- Leica IIIc
+- Elmar 3.5 (red scale)
 
 ## FED
 - 1950 Zorki 1b
 - 1956 Zenit C
 - Industar 22 collapsible
-- Industar 22
-- Helios 44 48mm f2 m39
+- Industar 22 (SLR)
+- Helios 44 48mm f2 m39 (SLR)
 
 
 # Other Gear
