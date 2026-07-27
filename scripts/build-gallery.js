@@ -21,11 +21,24 @@ function escapeAttr(str) {
     .replace(/'/g, '&#39;');
 }
 
+// config.siteUrl is optional (e.g. a custom domain set only in GitHub Pages
+// settings, and thus otherwise unknown to this script) — falls back to the
+// github.io URL derivable from the repo slug so forks still get a working
+// og:image for free.
+function getSiteUrl(config, repoSlug) {
+  if (config.siteUrl) return config.siteUrl.replace(/\/+$/, '');
+  if (repoSlug) {
+    const [owner, repo] = repoSlug.split('/');
+    return `https://${owner}.github.io/${repo}`;
+  }
+  return null;
+}
+
 // Social/link-preview crawlers read the static HTML and don't run
 // js/app.js, so — unlike the rest of the page's config-driven content,
 // which is rendered client-side — these tags have to be baked into
 // dist/index.html at build time.
-function buildOgMeta(config, entries) {
+function buildOgMeta(config, entries, siteUrl) {
   const title = config.photographerName ? `${config.photographerName} — Photography` : 'Photography Portfolio';
   const description = config.tagline || 'A photography portfolio.';
   const tags = [
@@ -34,9 +47,18 @@ function buildOgMeta(config, entries) {
     `<meta property="og:description" content="${escapeAttr(description)}">`,
     '<meta name="twitter:card" content="summary_large_image">',
   ];
+  if (siteUrl) tags.push(`<meta property="og:url" content="${escapeAttr(siteUrl + '/')}">`);
   const newest = entries[0];
-  if (newest) {
-    tags.push(`<meta property="og:image" content="${escapeAttr(newest.original)}">`);
+  // Deliberately points at the site's own resized copy (entry.file), not
+  // entry.original (raw.githubusercontent.com) — GitHub serves raw file
+  // content as `application/octet-stream` regardless of actual file type,
+  // which makes Facebook/Messenger's crawler reject the image and, with it,
+  // the whole link preview. Files served from the built site get a correct
+  // `image/jpeg` content-type.
+  if (newest && siteUrl) {
+    tags.push(`<meta property="og:image" content="${escapeAttr(`${siteUrl}/${newest.file}`)}">`);
+    tags.push(`<meta property="og:image:width" content="${newest.width}">`);
+    tags.push(`<meta property="og:image:height" content="${newest.height}">`);
   }
   return tags.join('\n');
 }
@@ -53,9 +75,10 @@ function copyStaticFiles(repoSlug, branch, entries) {
     : 'gear.md';
   fs.writeFileSync(path.join(DIST_DIR, 'config.json'), JSON.stringify(config, null, 2) + '\n');
 
+  const siteUrl = getSiteUrl(config, repoSlug);
   const indexHtml = fs
     .readFileSync(path.join(ROOT, 'index.html'), 'utf8')
-    .replace('<!--OG_META-->', buildOgMeta(config, entries));
+    .replace('<!--OG_META-->', buildOgMeta(config, entries, siteUrl));
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), indexHtml);
 
   fs.cpSync(path.join(ROOT, 'gear.md'), path.join(DIST_DIR, 'gear.md'));
