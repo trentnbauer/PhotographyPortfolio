@@ -56,8 +56,9 @@ placeholder gallery so you can see the layout.
   photos appear to load fast-then-sharpen with no extra thumbnail files or
   infrastructure needed.
 - The build also writes `images/manifest.json` (inside the build output only,
-  not committed) listing every photo, sorted newest first by the year/season/
-  roll/frame encoded in its filename (see [Filename convention](#filename-convention)).
+  not committed) listing every photo, sorted newest first by the date it was
+  added to the repo (from git history, falling back to the file's mtime for
+  photos that aren't committed yet).
 - The workflow deploys the built output directly to GitHub Pages. Nothing is
   written back to your `main` branch; resized images and the manifest are
   regenerated fresh on every push.
@@ -76,8 +77,8 @@ free Actions minutes for public repos and free GitHub Pages hosting.
 
 Photo metadata from scanners/film-editing software turned out to be
 unreliable — present on some files, present-but-blank on others, absent
-elsewhere — so gallery order and the camera/film caption shown in the
-lightbox are both derived entirely from the filename instead:
+elsewhere — so the camera/film caption shown in the lightbox is derived
+entirely from the filename instead:
 
 ```
 {year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}
@@ -85,12 +86,15 @@ lightbox are both derived entirely from the filename instead:
 
 For example `2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg`, or without a
 roll number, `2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg`. `season` must be
-one of `Summer`, `Autumn`, `Winter`, `Spring`. Photos are sorted newest
-first by year, then season, then roll, then frame — so within a roll, later
-frame numbers should be later shots. A file that doesn't match this pattern
-still builds and displays fine, just without a camera/film caption, and
-sorts to the end of the gallery (a build-time warning is logged so it's easy
-to spot a typo in a filename).
+one of `Summer`, `Autumn`, `Winter`, `Spring`. A file that doesn't match
+this pattern still builds, sorts, and displays fine — it just won't show a
+camera/film caption (a build-time warning is logged so it's easy to spot a
+typo in a filename).
+
+Gallery order itself doesn't come from this filename — it comes from git
+history (see [How it works](#how-it-works)), since roll/frame numbers reset
+independently per camera and aren't comparable across different cameras
+used in the same season.
 
 ## Custom domain + SSL
 
