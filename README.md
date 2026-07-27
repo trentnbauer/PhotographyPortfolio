@@ -27,7 +27,11 @@ build-on-push pipeline possible for free (see [How it works](#how-it-works)).
    }
    ```
    Leave any social URL blank to hide that icon. `accentColor` accepts any
-   valid CSS color (oklch, hex, etc).
+   valid CSS color (oklch, hex, etc). If you set up a custom domain (see
+   step 5), also add `"siteUrl": "https://yourdomain.com"` — it's used to
+   build the absolute URL for the social-preview image
+   (`og:image`/`og:url`); without it, the build falls back to your
+   `github.io` URL.
 3. Drop your photos into `images/` (jpg, jpeg, png, webp, tiff, gif, avif —
    any resolution, GitHub's limit is 100MB per file), named following the
    [filename convention](#filename-convention) below.
