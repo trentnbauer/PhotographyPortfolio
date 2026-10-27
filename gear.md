@@ -11,6 +11,7 @@ Remove every item to hide the Gear page and its nav link.
 -->
 
 ## Minolta
+- XD `Body`
 - SRT 303 `Body`
 - SRT Super `Body`
 - PF 58mm f1.4 `Lens`
@@ -20,18 +21,15 @@ Remove every item to hide the Gear page and its nav link.
 
 ## Leitz
 - Leica IIIc `Body`
+- Leica CL `Body`
 - Elmar 3.5 (red scale) `Lens`
 
 ## FED / Soviet
-- 1950 Zorki 1b `Body`
 - 1956 Zenit C `Body`
 - Industar 22 collapsible `Lens`
 - Industar 22 (SLR) `Lens`
+- Industar 60 (LTM) `Lens`
 - Helios 44 48mm f2 M39 `Lens`
-
-## Film stocks
-- Kodak ColorPlus 200 `Colour`
-- Random expired stock `Mystery`
 
 ## Tools
 - [FilmCalc](https://filmcalc.app) `App` — Price of shooting film — handy for comparing stocks or labs.
