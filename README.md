@@ -88,10 +88,13 @@ on how to add them.
   into the deployed site, so a large library of full-res scans doesn't risk
   hitting GitHub Pages' recommended ~1GB site size.
 
-- Each visitor's browser (localStorage) remembers which photos were in the
-  gallery on their last visit. Anything added since gets an orange outline
-  and a NEW tag for the whole visit (reloads included); a visit ends after
-  30 minutes away. First-time visitors see no tags.
+- The build also records a short SHA-256 fingerprint of each original's
+  contents. Each visitor's browser (localStorage) remembers which
+  fingerprints were in the gallery on their last visit. Anything added since
+  gets an orange outline and a NEW tag for the whole visit (reloads
+  included); a visit ends after 30 minutes away. First-time visitors see no tags. Because it goes by file
+  contents, renaming a photo doesn't make it look new, but replacing it with
+  an edited version does.
 
 Because everything (code, config, photos) is public in this repo, there are
 no secrets or credentials to manage — the whole pipeline runs on GitHub's
