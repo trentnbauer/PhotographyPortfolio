@@ -1,194 +1,125 @@
 # Photography Portfolio
 
-A minimal, framework-free photography portfolio: a contact-sheet style grid of
-your photos (newest first), a Favourites page, a Gear page, a full-resolution
-photo viewer and a light/dark theme. GitHub Actions resizes your photos and
-deploys the site to GitHub Pages — no servers, no paid services, no secrets to
-manage.
+A simple, free photography portfolio: a grid of your photos (newest first), a
+full-resolution photo viewer, optional Favourites and Gear pages, and a
+light/dark theme. GitHub builds and hosts it for you — no servers, no paid
+services.
 
-This repo is a **template**: anyone can fork or clone it to build their own
-version. Everything here — code, config, and photos — is public, which is what
-lets the whole pipeline run free on GitHub.
+## Set up
 
-## Quick start
+### 1. Copy the repo and make it yours
 
-1. Fork or clone this repo.
-2. Edit [`config.yaml`](config.yaml) with your details (see [Configuration](#configuration)).
-3. Turn on GitHub Pages once: **Settings → Pages → Source: GitHub Actions**.
-4. Add photos (see [Adding photos](#adding-photos)).
+1. Click **Fork** at the top of this page to make your own copy.
+2. In your copy, edit [`config.yaml`](config.yaml): your name, tagline, links
+   and so on. Every setting is explained in the file. Change `siteUrl` to your
+   own domain, or delete that line if you don't have one.
+3. Edit [`gear.md`](gear.md) with your gear, or delete it to hide the Gear page.
 
-After the first successful workflow run, your site is live at
-`https://<username>.github.io/<repo>/`.
+You can do all of this in the browser: open a file and click the ✏️ pencil.
 
-To preview locally:
-```
-npm install
-npm run build
-cd dist && python3 -m http.server 8080
-```
-Open http://localhost:8080. With no photos yet, the page shows a short hint.
+### 2. Turn on GitHub Pages
 
-## Configuration
+1. Go to **Settings → Pages** and under **Source** choose **GitHub Actions**.
+2. Go to the **Actions** tab. On a fork, click **I understand my workflows, go
+   ahead and enable them** first.
+3. Click **Build and deploy → Run workflow**.
 
-Everything about the site lives in `config.yaml`; each setting is commented in
-the file itself. In short:
+After a minute or two your site is live at
+`https://<your-username>.github.io/<repo-name>/`.
 
-| Setting | What it does |
-|---|---|
-| `photographerName` / `photographerShortName` | Your name: the long one on desktop, the short one (≤ 4 characters) on phones. |
-| `tagline` | The line under your name. |
-| `siteUrl` | Your domain, used for link previews (`og:image`/`og:url`). Without it the build uses your `github.io` address. |
-| `accentColor` | Any CSS colour (oklch, hex…). |
-| `fonts` | `display`, `body` and `mono` — any Google Fonts family names; loaded automatically. |
-| `avatar` | Display picture next to your name. Leave it out to hide it. |
-| `pages` | Label for the Index page. (Favourites and Gear appear automatically when they have something to show.) |
-| `headerLinks` | Extra links in the nav (Instagram, eBay…), as many as you like. |
+### 3. Add your photos
 
-Every page and link has a `label` (desktop) and a `shortLabel` of 4 characters
-or fewer (phones; longer ones are cut to 4 with a console warning). Pages and
-links can also have a `hover` — the tooltip shown when the mouse rests on it:
+Photos are stored as files attached to a GitHub release, so they don't bloat
+the repo and are kept full size and untouched.
 
-```yaml
-headerLinks:
-  - label: eBay
-    shortLabel: eBay
-    url: https://www.ebay.com.au/usr/yourname
-    hover: The gear I'm selling
-```
+1. Go to **Releases → Draft a new release** (on the right of the repo's main
+   page).
+2. Click **Choose a tag**, type `images` and pick **Create new tag**. Give it
+   any title.
+3. Drag your photos into the box at the bottom and click **Publish release**.
 
-When the nav row gets too long, Index and Favourites stay visible and the rest
-fold into a ☰ Menu.
+To add more later, open the **images** release, click **✏️ Edit**, drop in the
+new files and click **Update release**. The site picks them up within the
+hour, or straight away with **Actions → Build and deploy → Run workflow**.
 
-## Adding photos
+**Favourites (optional):** make a second release with the tag `favourites`
+and upload an **exact copy** of each photo you want on the Favourites page. A
+photo in both releases still shows only once on the main page, and the
+Favourites page appears once that release has a photo in it.
 
-Photos live as files attached to two GitHub releases, which keeps large scans
-out of the repo (each file can be up to 2GB, and GitHub stores it untouched):
+### 4. Point your domain at it (optional)
 
-- **`images`** — every photo on the site.
-- **`favourites`** — photos also shown on the Favourites page.
+1. Go to **Settings → Pages → Custom domain**, enter your domain (e.g.
+   `photos.example.com`) and click **Save**.
+2. At your domain provider, add a DNS record:
+   - **Subdomain** (like `photos.example.com`): a `CNAME` record pointing to
+     `<your-username>.github.io`.
+   - **Root domain** (like `example.com`): four `A` records pointing to
+     `185.199.108.153`, `185.199.109.153`, `185.199.110.153` and
+     `185.199.111.153`.
+3. Once GitHub shows the domain check as passing, tick **Enforce HTTPS**. The
+   certificate is free and automatic, but can take up to a day.
+4. Set `siteUrl` in `config.yaml` to your domain so link previews use it.
 
-**To add photos:** open **Releases → Images → Edit**, drag the files into the
-attachments box and click **Update release** — or from a terminal,
-`gh release upload images *.jpg`. This works from a phone's browser too.
+That's it.
 
-The Favourites page (and its nav link) only appears once the `favourites`
-release has at least one photo.
+---
 
-**To make a photo a favourite:** upload an **exact copy** of the same file to
-the `favourites` release. The build matches files by their contents, so the
-photo still shows only once in the main gallery, keeps its original date and
-doesn't get a NEW tag. If the copies differ (a re-export, say) it shows twice,
-and the build log warns about it. To remove a favourite, delete it from the
-`favourites` release.
+## Reference
 
-**To remove a photo:** delete it from the release.
+### Captions
 
-**When it goes live:** the site rebuilds every hour (at :17). To update
-straight away, open **Actions → Build and deploy → Run workflow**.
-
-Gallery order is upload order, newest first. Captions come from each photo's
-own metadata (see [Captions](#captions)).
-
-### Committing photos instead
-
-The build also picks up photos committed to an `images/` folder (and
-`images/favourites/` for favourites), dated by when they were first
-committed. GitHub limits committed files to 100MB each, and large libraries
-make the repo slow to clone, which is why releases are preferred.
-
-## Captions
-
-The photo viewer's caption comes from each original's own metadata (EXIF,
-XMP and IPTC), read when the site builds:
-
-- **Title**, or the description if there's no title;
-- **Camera** (make and model) and **lens**;
-- **Exposure**: focal length, aperture, shutter speed and ISO.
-
-Film scans mostly carry the lab scanner's details (e.g. *Noritsu EZ
-Controller*) rather than the camera's, so anything that came from a scanner is
-ignored. A photo with no usable metadata simply has no caption. To add one,
-set the fields in Lightroom or Photoshop (*File → File Info*), or with
+The photo viewer shows each photo's own metadata: its title (or description),
+camera, lens and exposure. Details written by film scanners (e.g. *Noritsu EZ
+Controller*) are ignored. To add a caption, fill in the fields in Lightroom or
+Photoshop (**File → File Info**) before uploading, or use
 [ExifTool](https://exiftool.org):
 
 ```
-exiftool -Title="Beach, Phillip Island" -Make=Minolta -Model="SRT 101" \
-  -LensModel="MC Rokkor-PF 58mm f/1.4" photo.jpg
+exiftool -Title="Beach, Phillip Island" -Make=Minolta -Model="SRT 101" photo.jpg
 ```
 
-then upload the updated file to the release, deleting the old copy. Editing
-metadata changes the file, so the updated photo counts as a new upload: it
-moves to the top of the gallery and gets a NEW tag. Adding metadata before
-uploading avoids that.
+Re-uploading an edited file counts as a new photo (it moves to the top and
+gets a NEW tag), so it's easiest to add metadata before the first upload.
 
-## Gear page
+### Gear page
 
-[`gear.md`](gear.md) drives the Gear page. The paragraph under the top
-`# Gear` heading is the intro; each `## Heading` is a group and each list item
-a row. A tag in backticks (`` `Body` ``, `` `Lens` ``, `` `App` ``…) shows on
-the right, text after ` — ` is a note underneath, and `[Name](url)` makes the
-item a link:
+In [`gear.md`](gear.md), each `## Heading` is a group and each `- item` a row.
+Add a tag in backticks, a note after ` — `, or make an item a link:
 
 ```md
 ## Minolta
 - SRT 303 `Body`
-
-## Tools
 - [FilmCalc](https://filmcalc.app) `App` — Price of shooting film.
 ```
 
-If `gear.md` is missing or has no items, the Gear page and its nav link are
-hidden. Edits go live with the next build (pushing the change triggers one).
+### Settings
 
-## How it works
+All in [`config.yaml`](config.yaml):
 
-- **Build** (`npm run build` → `scripts/build-gallery.js`), run by
-  `.github/workflows/deploy.yml` on every push, every hour, and on demand:
-  - collects photos from the `images` and `favourites` releases and from
-    `images/`, and merges identical files by their SHA-256;
-  - makes a 2400px copy and a 1200px grid thumbnail of each, as progressive
-    JPEGs (they render blurry-first, then sharpen), cached by content hash in
-    `.cache/` between runs so each photo is only downloaded and resized once;
-  - writes `images/manifest.json` (build output only) listing every photo,
-    newest first;
-  - turns `config.yaml` and `gear.md` into `config.json` and `gear.json`
-    for the page, and bakes link-preview tags into `index.html`.
-- **Deploy:** the built `dist/` folder goes straight to GitHub Pages; nothing
-  is written back to the repo.
-- **Photo viewer:** clicking a photo shows its grid thumbnail, blurred, with a
-  loading circle, then swaps in the **original, untouched file** straight from
-  the release (or the repo) once it has loaded. Arrow keys, swipe and Esc work,
-  and the photos either side are preloaded. Only grid thumbnails are
-  compressed, and the sharp photo is always the original. Click (or tap) the
-  photo to see it at 100% and drag (or swipe) to pan; click again, or press
-  Esc, to fit it back to the screen.
-- **NEW tags:** each visitor's browser remembers the fingerprints of the photos
-  on the site at their last visit. Anything added since gets an orange outline
-  and a NEW tag for the whole visit (a visit ends after 30 minutes away).
-  First-time visitors see no tags. Because it goes by file contents, renaming
-  a photo doesn't make it look new, but replacing it with an edit does.
-- **Theme:** follows the visitor's system setting until they toggle it; the
-  switch sweeps across the screen diagonally (instant with reduced motion).
+| Setting | What it does |
+|---|---|
+| `photographerName` / `photographerShortName` | Your name. The short one (4 characters max) is used on phones. |
+| `tagline` | The line under your name. |
+| `siteUrl` | Your domain, for link previews. |
+| `accentColor` | Any CSS colour. |
+| `fonts` | Any Google Fonts names for headings, text and labels. |
+| `avatar` | Picture next to your name (leave out to hide). |
+| `headerLinks` | Extra nav links, each with a `label`, `shortLabel`, `url` and optional `hover` tooltip. |
 
-## Custom domain + SSL
+### Good to know
 
-In **Settings → Pages**, add your custom domain (e.g.
-`photography.example.com`) and add the CNAME record GitHub gives you at your
-DNS provider. GitHub Pages provisions a free SSL certificate once DNS
-resolves. Set `siteUrl` in `config.yaml` to match.
-
-## Project structure
-
-```
-config.yaml                     Site settings (name, links, fonts, avatar…)
-gear.md                         Gear list shown on the Gear page
-index.html                      Page structure
-css/style.css                   Styling, light/dark theme, photo grid
-js/app.js                       Renders Index, Favourites, Gear and the viewer
-scripts/build-gallery.js        Collects + resizes photos, writes dist/
-.github/workflows/deploy.yml    Build + deploy on push, hourly and on demand
-dist/, .cache/                  Build output and resize cache (git-ignored)
-```
+- **Order:** newest upload first.
+- **NEW tags:** returning visitors see an orange NEW tag on photos added since
+  their last visit.
+- **Zoom:** in the viewer, click a photo to see it at 100% and drag to look
+  around.
+- **Updates:** the site rebuilds on every change to the repo and every hour
+  (to pick up new release photos).
+- **Committed photos:** photos in an `images/` folder in the repo (and
+  `images/favourites/`) work too, but releases are better for large scans.
+- **Preview on your computer:** `npm install`, `npm run build`, then
+  `cd dist && python3 -m http.server 8080` and open http://localhost:8080.
 
 ## Credits
 
