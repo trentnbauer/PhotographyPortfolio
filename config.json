@@ -34,6 +34,11 @@
       "label": "eBay",
       "shortLabel": "eBay",
       "url": "https://www.ebay.com.au/usr/trentnbauer"
+    },
+    {
+      "label": "Resume",
+      "shortLabel": "Rsme",
+      "url": "https://trentbauer.com"
     }
   ]
 }
