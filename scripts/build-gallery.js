@@ -7,6 +7,8 @@ const sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..');
 const IMAGES_DIR = path.join(ROOT, 'images');
+// Photos in images/favourites/ appear in the main gallery and on the Favourites page.
+const FAVOURITES_SUBDIR = 'favourites';
 const DIST_DIR = path.join(ROOT, 'dist');
 const DIST_IMAGES_DIR = path.join(DIST_DIR, 'images');
 const DIST_THUMBS_DIR = path.join(DIST_IMAGES_DIR, 'thumbs');
@@ -177,8 +179,11 @@ function loadGitAddedDates() {
       if (line.startsWith('\0')) {
         currentDate = line.slice(1);
       } else if (line.trim()) {
-        // git log runs newest-first, so the last write for a path wins (earliest add)
-        map.set(line.trim(), currentDate);
+        // Keyed by filename alone, so moving a photo into images/favourites/
+        // keeps its original date (and place in the gallery) instead of
+        // counting as a fresh upload. git log runs newest-first, so the last
+        // write for a name wins (earliest add).
+        map.set(path.posix.basename(line.trim()), currentDate);
       }
     }
   } catch (e) {
@@ -188,8 +193,7 @@ function loadGitAddedDates() {
 }
 
 function gitAddedDate(absPath, datesMap) {
-  const relPath = path.relative(ROOT, absPath).split(path.sep).join('/');
-  return datesMap.get(relPath) || fs.statSync(absPath).mtime.toISOString();
+  return datesMap.get(path.basename(absPath)) || fs.statSync(absPath).mtime.toISOString();
 }
 
 function getRepoSlug() {
@@ -212,9 +216,18 @@ function getBranch() {
   return process.env.GITHUB_REF_NAME || 'main';
 }
 
-function originalUrl(repoSlug, branch, file) {
+function originalUrl(repoSlug, branch, relPath) {
   if (!repoSlug) return null;
-  return `https://raw.githubusercontent.com/${repoSlug}/${branch}/images/${encodeURIComponent(file)}`;
+  const encoded = relPath.split('/').map(encodeURIComponent).join('/');
+  return `https://raw.githubusercontent.com/${repoSlug}/${branch}/images/${encoded}`;
+}
+
+function listImages(dir, favourite) {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((file) => EXTENSIONS.has(path.extname(file).toLowerCase()))
+    .map((file) => ({ file, relPath: favourite ? `${FAVOURITES_SUBDIR}/${file}` : file, favourite }));
 }
 
 async function processImages(repoSlug, branch) {
@@ -223,26 +236,24 @@ async function processImages(repoSlug, branch) {
     return [];
   }
 
-  const files = fs
-    .readdirSync(IMAGES_DIR)
-    .filter((file) => EXTENSIONS.has(path.extname(file).toLowerCase()));
+  const files = listImages(IMAGES_DIR, false).concat(listImages(path.join(IMAGES_DIR, FAVOURITES_SUBDIR), true));
 
   fs.mkdirSync(DIST_THUMBS_DIR, { recursive: true });
 
   const gitDates = loadGitAddedDates();
   const outNameSources = new Map();
 
-  const entries = await mapWithConcurrency(files, 8, async (file) => {
-    const srcPath = path.join(IMAGES_DIR, file);
+  const entries = await mapWithConcurrency(files, 8, async ({ file, relPath, favourite }) => {
+    const srcPath = path.join(IMAGES_DIR, relPath);
     const outName = `${slugify(file)}.jpg`;
     const outPath = path.join(DIST_IMAGES_DIR, outName);
     const thumbPath = path.join(DIST_THUMBS_DIR, outName);
 
     const collidesWith = outNameSources.get(outName);
     if (collidesWith) {
-      throw new Error(`Filename collision: "${file}" and "${collidesWith}" both produce "${outName}" — rename one of them.`);
+      throw new Error(`Filename collision: "${relPath}" and "${collidesWith}" both produce "${outName}" — rename or remove one of them.`);
     }
-    outNameSources.set(outName, file);
+    outNameSources.set(outName, relPath);
 
     let metadata;
     const srcMtime = fs.statSync(srcPath).mtimeMs;
@@ -275,7 +286,7 @@ async function processImages(repoSlug, branch) {
       hash: await hashFile(srcPath),
       file: `images/${outName}`,
       thumb: `images/thumbs/${outName}`,
-      original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
+      original: originalUrl(repoSlug, branch, relPath) || `images/${outName}`,
       alt: labelFromFilename(file),
       date: gitAddedDate(srcPath, gitDates),
       width: metadata.width,
@@ -283,6 +294,7 @@ async function processImages(repoSlug, branch) {
       camera: meta ? meta.camera : undefined,
       film: meta ? meta.film : undefined,
       frame: meta ? meta.frame : undefined,
+      favourite: favourite || undefined,
     };
   });
 

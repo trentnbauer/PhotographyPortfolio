@@ -24,7 +24,6 @@ build-on-push pipeline possible for free (see [How it works](#how-it-works)).
      "accentColor": "oklch(0.58 0.13 35)",
      "fonts": { "display": "Archivo", "body": "Archivo", "mono": "JetBrains Mono" },
      "avatar": "https://gravatar.com/avatar/<hash>?s=400&d=mp",
-     "heroImages": ["2026-Spring-MinoltaSRT-KodakEktar100-R01-0012.jpg"],
      "pages": {
        "index": { "label": "Index", "shortLabel": "Home" },
        "favourites": { "label": "Favourites", "shortLabel": "Favs" },
@@ -39,8 +38,6 @@ build-on-push pipeline possible for free (see [How it works](#how-it-works)).
      or fewer (phones). Longer short labels are cut to 4 with a console warning.
    - `headerLinks` can hold any number of links. When the nav row gets too long,
      Index and Favourites stay visible and the rest fold into a ☰ Menu.
-   - `heroImages` lists the photos shown on the Favourites page, by filename
-     (case and extension don't matter).
    - `fonts` takes any Google Fonts family names; they're loaded automatically.
    - `avatar` is optional; leave it out to hide the display picture.
    - `accentColor` accepts any valid CSS color. `siteUrl` is used for the
@@ -123,6 +120,14 @@ history (see [How it works](#how-it-works)), since roll/frame numbers reset
 independently per camera and aren't comparable across different cameras
 used in the same season.
 
+## Favourites
+
+Photos in `images/favourites/` make up the Favourites page, and still appear
+in the main gallery like everything else. To mark a photo as a favourite,
+move it into that folder; to unmark it, move it back. Moving a photo keeps
+its place in the gallery (dates are tracked by filename) and doesn't give it
+a NEW tag (those go by file contents).
+
 ## Gear page
 
 `gear.md` drives the Gear page. Each `## Heading` is a group and each list
@@ -152,8 +157,9 @@ css/style.css              Styling, light/dark theme, photo grid
 js/app.js                  Loads config, manifest + gear.md; renders Index, Favourites and Gear
 gear.md                    Gear list shown on the Gear page
 scripts/build-gallery.js   Resizes images/ into dist/, writes dist/images/manifest.json
-config.json                 Your name, links, fonts, avatar, favourites (committed)
+config.json                 Your name, links, fonts, avatar (committed)
 images/                     Your original photos (committed, any resolution)
+images/favourites/          Photos also shown on the Favourites page
 .github/workflows/deploy.yml  Builds and deploys to GitHub Pages on every push
 dist/                       Build output (git-ignored, regenerated each run)
 ```
