@@ -444,9 +444,8 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   width: auto;
   height: auto;
   object-fit: contain;
-  transition: filter .3s ease;
 }
-.lb-img.is-loading { filter: blur(2px); }
+.lb-img.is-loading { visibility: hidden; }
 
 .lb-spinner {
   position: absolute;
