@@ -87,8 +87,10 @@ on how to add them.
   into the deployed site, so a large library of full-res scans doesn't risk
   hitting GitHub Pages' recommended ~1GB site size.
 
-- Each visitor's browser remembers which photos it has already shown. On
-  their next visit, anything new gets an orange outline and a NEW tag.
+- Each visitor's browser (localStorage) remembers which photos were in the
+  gallery on their last visit. Anything added since gets an orange outline
+  and a NEW tag for the whole visit (reloads included); a visit ends after
+  30 minutes away. First-time visitors see no tags.
 
 Because everything (code, config, photos) is public in this repo, there are
 no secrets or credentials to manage — the whole pipeline runs on GitHub's

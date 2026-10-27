@@ -1,7 +1,8 @@
 (function () {
   const root = document.documentElement;
   const THEME_KEY = 'photo-portfolio-theme';
-  const SEEN_KEY = 'photo-portfolio-seen';
+  const SEEN_KEY = 'photo-portfolio-visits';
+  const VISIT_GAP_MS = 30 * 60 * 1000;
   const DEFAULT_FONTS = { display: 'Archivo', body: 'Archivo', mono: 'JetBrains Mono' };
   const VIEWS = { '': 'index', index: 'index', favourites: 'favs', gear: 'gear' };
   const FILM_TAGS = new Set(['colour', 'color', 'b&w', 'bw', 'black & white', 'slide', 'mystery']);
@@ -257,18 +258,28 @@
 
   // ---------- Gallery ----------
 
-  // The browser remembers which photos it has already shown; anything not in that list is new.
-  // A first-time visitor has no list yet, so nothing is marked new for them.
+  // A photo is "new" if it wasn't in the gallery when this visitor's previous visit ended.
+  // A visit lasts until they've been away for VISIT_GAP_MS, so NEW tags survive reloads and
+  // page changes, then clear on the next visit. Comparing photo lists rather than upload dates
+  // means a photo committed just before a visit but deployed just after still gets flagged.
+  // First-time visitors have no previous visit, so nothing is new for them.
   function newPhotoChecker(manifest) {
-    let seen = null;
+    const names = manifest.map((entry) => entry.name || entry.file);
+    const now = Date.now();
+    let saved = null;
     try {
-      const raw = storageGet(SEEN_KEY);
-      seen = raw ? new Set(JSON.parse(raw)) : null;
+      saved = JSON.parse(storageGet(SEEN_KEY));
     } catch (e) {
-      seen = null;
+      saved = null;
     }
-    storageSet(SEEN_KEY, JSON.stringify(manifest.map((entry) => entry.name || entry.file)));
-    return (entry) => !!seen && !seen.has(entry.name || entry.file);
+    let baseline = null;
+    if (saved && Array.isArray(saved.seen)) {
+      const newVisit = !(now - saved.lastActive < VISIT_GAP_MS);
+      baseline = newVisit ? saved.seen : saved.baseline;
+    }
+    storageSet(SEEN_KEY, JSON.stringify({ seen: names, baseline, lastActive: now }));
+    const known = baseline ? new Set(baseline) : null;
+    return (entry) => !!known && !known.has(entry.name || entry.file);
   }
 
   function renderGrid(container, entries, { isNew, onOpen }) {
