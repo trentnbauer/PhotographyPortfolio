@@ -1,5 +1,5 @@
 # Gear
-Old Minoltas, a Leica and a couple of Soviet bodies. Mostly manual, mostly older than me.
+Old Minoltas, a Leica and a couple of Soviet bodies. Mostly manual, all older than me.
 
 <!--
 How this file is shown on the Gear page:
@@ -18,6 +18,10 @@ Remove every item to hide the Gear page and its nav link.
 - PG 50mm f1.4 `Lens`
 - SG 28mm f3.5 `Lens`
 - PF 135mm f2.8 `Lens`
+
+## Pentax
+- 6x7 `Body`
+- SMC Takumar 150mm f2.8`Lens`
 
 ## Leitz
 - Leica IIIc `Body`
