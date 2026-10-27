@@ -41,7 +41,7 @@ the file itself. In short:
 | `accentColor` | Any CSS colour (oklch, hex…). |
 | `fonts` | `display`, `body` and `mono` — any Google Fonts family names; loaded automatically. |
 | `avatar` | Display picture next to your name. Leave it out to hide it. |
-| `pages` | Labels for the Index and Gear pages. (Favourites and Gear only appear when they have something to show.) |
+| `pages` | Label for the Index page. (Favourites and Gear appear automatically when they have something to show.) |
 | `headerLinks` | Extra links in the nav (Instagram, eBay…), as many as you like. |
 
 Every page and link has a `label` (desktop) and a `shortLabel` of 4 characters
@@ -144,9 +144,13 @@ hidden. Edits go live with the next build (pushing the change triggers one).
     for the page, and bakes link-preview tags into `index.html`.
 - **Deploy:** the built `dist/` folder goes straight to GitHub Pages; nothing
   is written back to the repo.
-- **Photo viewer:** clicking a photo opens the **original, untouched file**,
-  straight from the release (or the repo), with arrow keys, swipe and Esc. The
-  photos either side are preloaded. Only grid thumbnails are compressed.
+- **Photo viewer:** clicking a photo shows its grid thumbnail, blurred, with a
+  loading circle, then swaps in the **original, untouched file** straight from
+  the release (or the repo) once it has loaded. Arrow keys, swipe and Esc work,
+  and the photos either side are preloaded. Only grid thumbnails are
+  compressed, and the sharp photo is always the original. Click (or tap) the
+  photo to see it at 100% and drag (or swipe) to pan; click again, or press
+  Esc, to fit it back to the screen.
 - **NEW tags:** each visitor's browser remembers the fingerprints of the photos
   on the site at their last visit. Anything added since gets an orange outline
   and a NEW tag for the whole visit (a visit ends after 30 minutes away).
