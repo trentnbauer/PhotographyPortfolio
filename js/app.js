@@ -313,23 +313,6 @@
     });
   }
 
-  function normaliseName(name) {
-    return String(name).trim().toLowerCase().replace(/\.(jpe?g|png|webp|tiff?|gif|avif)$/, '');
-  }
-
-  // config.heroImages lists favourite filenames; matching ignores case and extension
-  // (images/ has both .jpg and .JPG), falling back to a partial match.
-  function pickFavourites(config, manifest) {
-    const wanted = config.heroImages || config.favourites || [];
-    const byName = new Map(manifest.map((entry) => [normaliseName(entry.name || ''), entry]));
-    return wanted
-      .map((name) => {
-        const key = normaliseName(name);
-        return byName.get(key) || manifest.find((entry) => normaliseName(entry.name || '').includes(key));
-      })
-      .filter(Boolean);
-  }
-
   // ---------- Gear ----------
 
   function parseGearItem(text) {
@@ -598,7 +581,8 @@
     const manifest = (await loadJSON('images/manifest.json')) || [];
     document.getElementById('empty-hint').hidden = manifest.length > 0;
     renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
-    const favourites = pickFavourites(config, manifest);
+    // Favourites are the photos kept in images/favourites/ (flagged by the build).
+    const favourites = manifest.filter((entry) => entry.favourite);
     document.getElementById('favs-empty').hidden = favourites.length > 0;
     renderGrid(document.getElementById('favs-gallery'), favourites, { onOpen: openLightbox });
   }
