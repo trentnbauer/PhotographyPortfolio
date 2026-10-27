@@ -259,6 +259,8 @@ body[data-view="index"] .brand { visibility: hidden; }
   padding: 4px 6px;
 }
 
+.favs-empty { margin: 0; color: var(--muted); }
+
 .empty-hint {
   margin: 48px var(--pad) 0;
   color: var(--muted);
@@ -505,6 +507,11 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
 
   #gallery { margin: 24px 12px 24px; }
   .grid { gap: 12px 8px; }
+  /* Every row fills the screen width on phones, even a lone portrait. Flex
+     items whose grow factors sum below 1 only take that fraction of the spare
+     space, so scale them up (proportions are unchanged). */
+  .grid::after { display: none; }
+  .tile { flex-grow: calc(var(--ar) * 100); }
   .new-badge { font-size: 9px; }
 
   .view-favs { padding: 16px 12px 24px; gap: 20px; }
