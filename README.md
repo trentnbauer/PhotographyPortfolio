@@ -120,11 +120,35 @@ history (see [How it works](#how-it-works)), since roll/frame numbers reset
 independently per camera and aren't comparable across different cameras
 used in the same season.
 
-## Favourites
+## Photos in releases
 
-Photos in `images/favourites/` make up the Favourites page, and still appear
-in the main gallery like everything else. To mark a photo as a favourite,
-move it into that folder; to unmark it, move it back. Moving a photo keeps
+Photos can also be attached to two GitHub releases instead of committed,
+which keeps large scans out of the repo (each file can be up to 2GB and
+GitHub never compresses them):
+
+- **`images`** — every photo on the site.
+- **`favourites`** — photos also shown on the Favourites page.
+
+To add photos, open **Releases → Images → Edit**, drag files into the
+attachments box and click **Update release** (or run
+`gh release upload images *.jpg`). The site rebuilds every hour; to update
+straight away, open **Actions → Build and deploy → Run workflow**. A
+release photo's gallery date is when it was uploaded.
+
+To make a photo a favourite, upload an **exact copy** of the file to the
+`favourites` release. The build matches files by content, so a photo found
+in both releases (or in a release and `images/`) shows once in the gallery,
+keeps its earliest date, and doesn't get a NEW tag. If the copies differ
+(say, a re-export), it will show twice, and the build logs a warning.
+
+`.github/workflows/migrate-to-releases.yml` is a one-off workflow that copies
+the photos committed in `images/` into these releases, in the batches they
+were originally committed in so the gallery keeps its order.
+
+## Favourites folder
+
+Committed photos in `images/favourites/` also make up the Favourites page,
+and still appear in the main gallery. Moving a photo into that folder keeps
 its place in the gallery (dates are tracked by filename) and doesn't give it
 a NEW tag (those go by file contents).
 
@@ -156,7 +180,8 @@ index.html                Page structure
 css/style.css              Styling, light/dark theme, photo grid
 js/app.js                  Loads config, manifest + gear.md; renders Index, Favourites and Gear
 gear.md                    Gear list shown on the Gear page
-scripts/build-gallery.js   Resizes images/ into dist/, writes dist/images/manifest.json
+scripts/build-gallery.js   Resizes images/ and release photos into dist/, writes dist/images/manifest.json
+scripts/migrate-to-releases.js  One-off copy of images/ into the images/favourites releases
 config.json                 Your name, links, fonts, avatar (committed)
 images/                     Your original photos (committed, any resolution)
 images/favourites/          Photos also shown on the Favourites page

@@ -3,6 +3,10 @@ name: Build and deploy
 on:
   push:
     branches: [main]
+  # Adding photos to a release doesn't trigger a run, so rebuild hourly to pick
+  # them up (or press "Run workflow" in the Actions tab to update straight away).
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -25,7 +29,16 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      # Resized copies keyed by content hash, so release photos are only
+      # downloaded and resized once rather than on every hourly build.
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: build-cache-${{ github.run_id }}
+          restore-keys: build-cache-
       - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

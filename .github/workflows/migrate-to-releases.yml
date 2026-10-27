@@ -1,0 +1,24 @@
+name: Copy photos into releases (one-off)
+
+# Run once from the Actions tab: uploads the photos in images/ to the
+# "images" and "favourites" releases in their original commit batches.
+# Safe to re-run; files already uploaded are skipped.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/migrate-to-releases.js
+        env:
+          GH_TOKEN: ${{ github.token }}
