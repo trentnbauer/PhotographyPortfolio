@@ -159,7 +159,7 @@
 
   // ---------- Nav ----------
 
-  function initNav(config) {
+  function initNav(config, { hasFavourites }) {
     const nav = document.getElementById('site-nav');
     const pages = config.pages || {};
     const page = (key, view, hash, label, short) => ({
@@ -167,34 +167,36 @@
       hash,
       label: (pages[key] && pages[key].label) || label,
       short: shortLabel(pages[key] && pages[key].shortLabel, short),
+      hover: pages[key] && pages[key].hover,
     });
-    const items = [
-      page('index', 'index', '#', 'Index', 'Home'),
-      page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'),
+    // Favourites only appears once there's at least one favourite photo.
+    const primary = [page('index', 'index', '#', 'Index', 'Home')];
+    if (hasFavourites) primary.push(page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'));
+    const items = primary.concat(
       page('gear', 'gear', '#gear', 'Gear', 'Gear'),
-    ].concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url })));
+    ).concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url, hover: l.hover })));
 
     const labelled = (item) => [
       el('span', { className: 'l-long', text: item.url ? `${item.label} ↗` : item.label }),
       el('span', { className: 'l-short', text: item.url ? `${item.short} ↗` : item.short }),
     ];
     const navLink = (item, className) => item.url
-      ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer' }, labelled(item))
-      : el('a', { className, href: item.hash, 'data-view': item.view }, labelled(item));
+      ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover }, labelled(item))
+      : el('a', { className, href: item.hash, 'data-view': item.view, title: item.hover }, labelled(item));
 
     // Index and Favourites always stay visible; everything else folds into the menu when the row is too long.
     nav.textContent = '';
-    items.forEach((item, i) => nav.append(navLink(item, i < 2 ? 'nav-item' : 'nav-item nav-extra')));
+    items.forEach((item, i) => nav.append(navLink(item, i < primary.length ? 'nav-item' : 'nav-item nav-extra')));
 
     const toggle = el('button', { className: 'nav-item menu-toggle', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true' }, [
       el('span', { className: 'burger', 'aria-hidden': 'true' }, [el('span'), el('span'), el('span')]),
       el('span', { className: 'menu-label', text: 'Menu' }),
     ]);
     const panel = el('span', { className: 'menu-panel', hidden: 'hidden' });
-    items.slice(2).forEach((item) => {
+    items.slice(primary.length).forEach((item) => {
       panel.append(item.url
-        ? el('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer', text: `${item.label} ↗` })
-        : el('a', { href: item.hash, 'data-view': item.view }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
+        ? el('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover, text: `${item.label} ↗` })
+        : el('a', { href: item.hash, 'data-view': item.view, title: item.hover }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
     });
     nav.append(el('span', { className: 'nav-menu' }, [toggle, panel]));
 
@@ -235,11 +237,12 @@
 
   // ---------- Views ----------
 
-  function initRouting(onShow) {
+  function initRouting(onShow, { hasFavourites }) {
     const sections = { index: 'view-index', favs: 'view-favs', gear: 'view-gear' };
     let current = null;
     function show() {
-      const view = VIEWS[location.hash.replace(/^#/, '')] || 'index';
+      let view = VIEWS[location.hash.replace(/^#/, '')] || 'index';
+      if (view === 'favs' && !hasFavourites) view = 'index';
       if (view === current) return;
       const first = current === null;
       current = view;
@@ -341,10 +344,9 @@
   }
 
   function parseGear(md) {
-    const result = { intro: '', groups: [], selling: null };
+    const result = { intro: '', groups: [] };
     let current = null;
     let sawTitle = false;
-    let selling = false;
     md.replace(/<!--[\s\S]*?-->/g, '').split('\n').forEach((raw) => {
       const line = raw.trim();
       if (!line) return;
@@ -354,16 +356,12 @@
           sawTitle = true;
           return;
         }
-        selling = /^selling$/i.test(heading[2]);
-        current = selling ? null : { title: heading[2], items: [] };
-        if (current) result.groups.push(current);
+        current = { title: heading[2], items: [] };
+        result.groups.push(current);
         return;
       }
       const item = line.match(/^[-*]\s+(.*)/);
-      if (selling) {
-        const link = line.match(/\[(.+?)\]\((.+?)\)/);
-        if (link && !result.selling) result.selling = { label: link[1], url: link[2] };
-      } else if (item && current) {
+      if (item && current) {
         current.items.push(parseGearItem(item[1]));
       } else if (!current && !result.intro) {
         result.intro = line;
@@ -419,13 +417,6 @@
         el('div', { className: 'gear-items' }, items),
       ]));
     });
-
-    const sellingEl = document.getElementById('gear-selling');
-    if (gear.selling) {
-      sellingEl.href = gear.selling.url;
-      document.getElementById('gear-selling-label').textContent = gear.selling.label;
-      sellingEl.hidden = false;
-    }
   }
 
   // ---------- Lightbox ----------
@@ -566,7 +557,11 @@
     initTheme();
     const config = (await loadJSON('config.json')) || {};
     applyConfig(config);
-    const layoutNav = initNav(config);
+    const manifest = (await loadJSON('images/manifest.json')) || [];
+    // Favourites are the photos in the favourites release or images/favourites/ (flagged by the build).
+    const favourites = manifest.filter((entry) => entry.favourite);
+    const hasFavourites = favourites.length > 0;
+    const layoutNav = initNav(config, { hasFavourites });
     const openLightbox = initLightbox();
 
     let gearLoaded = false;
@@ -576,14 +571,10 @@
         gearLoaded = true;
         loadGear(config.gearUrl);
       }
-    });
+    }, { hasFavourites });
 
-    const manifest = (await loadJSON('images/manifest.json')) || [];
     document.getElementById('empty-hint').hidden = manifest.length > 0;
     renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
-    // Favourites are the photos kept in images/favourites/ (flagged by the build).
-    const favourites = manifest.filter((entry) => entry.favourite);
-    document.getElementById('favs-empty').hidden = favourites.length > 0;
     renderGrid(document.getElementById('favs-gallery'), favourites, { onOpen: openLightbox });
   }
 

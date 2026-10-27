@@ -259,8 +259,6 @@ body[data-view="index"] .brand { visibility: hidden; }
   padding: 4px 6px;
 }
 
-.favs-empty { margin: 0; color: var(--muted); }
-
 .empty-hint {
   margin: 48px var(--pad) 0;
   color: var(--muted);
@@ -358,19 +356,6 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   color: var(--muted);
 }
 
-.gear-selling {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 22px 24px;
-  background: var(--fg);
-  color: var(--bg);
-  font: 500 14px var(--font-mono);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-.gear-selling:hover { color: var(--bg); opacity: .9; }
 
 /* ---------- Footer ---------- */
 
@@ -533,7 +518,6 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   a.gear-name { text-underline-offset: 4px; }
   .gear-note { font-size: 13px; }
   .gear-tag { font-size: 10px; }
-  .gear-selling { min-height: 56px; padding: 0 16px; font-size: 11px; letter-spacing: .1em; }
 
   .site-footer { padding: 20px; font-size: 10px; }
   .footer-site { display: none; }

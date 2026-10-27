@@ -6,6 +6,7 @@ const { execFileSync } = require('child_process');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const sharp = require('sharp');
+const YAML = require('yaml');
 
 const ROOT = path.join(__dirname, '..');
 const IMAGES_DIR = path.join(ROOT, 'images');
@@ -77,7 +78,8 @@ function buildOgMeta(config, entries, siteUrl) {
 function copyStaticFiles(repoSlug, branch, entries) {
   fs.mkdirSync(DIST_DIR, { recursive: true });
 
-  const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+  // config.yaml is the source of truth; the page reads it as dist/config.json.
+  const config = YAML.parse(fs.readFileSync(path.join(ROOT, 'config.yaml'), 'utf8')) || {};
   // Fetched live from GitHub's raw content at runtime so gear.md edits show up
   // without needing a full rebuild — falls back to the bundled copy when
   // there's no known repo (e.g. a local checkout with no git remote).
