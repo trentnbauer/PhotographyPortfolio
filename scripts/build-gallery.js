@@ -8,9 +8,13 @@ const ROOT = path.join(__dirname, '..');
 const IMAGES_DIR = path.join(ROOT, 'images');
 const DIST_DIR = path.join(ROOT, 'dist');
 const DIST_IMAGES_DIR = path.join(DIST_DIR, 'images');
+const DIST_THUMBS_DIR = path.join(DIST_IMAGES_DIR, 'thumbs');
 const EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.gif', '.avif']);
 const MAX_DIMENSION = 2400;
 const JPEG_QUALITY = 82;
+// Grid tiles are at most ~600 CSS px wide, so 1200px covers 2x screens
+// without making every visitor download the 2400px copy just to browse.
+const THUMB_DIMENSION = 1200;
 
 function escapeAttr(str) {
   return String(str)
@@ -128,15 +132,16 @@ function humanizeToken(token) {
 // caption now; gallery order comes from git history (gitAddedDate) instead,
 // since roll/frame numbers reset independently per camera and aren't
 // comparable across different cameras sharing the same year/season.
-const FILENAME_PATTERN = /^\d{4}-(?:Summer|Autumn|Winter|Spring)-([^-]+)-([^-]+)-(?:R\d+-)?\d+$/;
+const FILENAME_PATTERN = /^\d{4}-(?:Summer|Autumn|Winter|Spring)-([^-]+)-([^-]+)-(?:R\d+-)?(\d+)$/;
 
 function parseFilename(file) {
   const match = path.parse(file).name.match(FILENAME_PATTERN);
   if (!match) return null;
-  const [, camera, film] = match;
+  const [, camera, film, frame] = match;
   return {
     camera: humanizeToken(camera),
     film: humanizeToken(film),
+    frame,
   };
 }
 
@@ -207,7 +212,7 @@ async function processImages(repoSlug, branch) {
     .readdirSync(IMAGES_DIR)
     .filter((file) => EXTENSIONS.has(path.extname(file).toLowerCase()));
 
-  fs.mkdirSync(DIST_IMAGES_DIR, { recursive: true });
+  fs.mkdirSync(DIST_THUMBS_DIR, { recursive: true });
 
   const gitDates = loadGitAddedDates();
   const outNameSources = new Map();
@@ -216,6 +221,7 @@ async function processImages(repoSlug, branch) {
     const srcPath = path.join(IMAGES_DIR, file);
     const outName = `${slugify(file)}.jpg`;
     const outPath = path.join(DIST_IMAGES_DIR, outName);
+    const thumbPath = path.join(DIST_THUMBS_DIR, outName);
 
     const collidesWith = outNameSources.get(outName);
     if (collidesWith) {
@@ -237,6 +243,12 @@ async function processImages(repoSlug, branch) {
       });
       metadata = await resized.jpeg({ quality: JPEG_QUALITY, progressive: true }).toFile(outPath);
     }
+    if (!fs.existsSync(thumbPath) || fs.statSync(thumbPath).mtimeMs < srcMtime) {
+      await sharp(outPath)
+        .resize({ width: THUMB_DIMENSION, height: THUMB_DIMENSION, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: JPEG_QUALITY, progressive: true })
+        .toFile(thumbPath);
+    }
 
     const meta = parseFilename(file);
     if (!meta) {
@@ -244,7 +256,9 @@ async function processImages(repoSlug, branch) {
     }
 
     return {
+      name: file,
       file: `images/${outName}`,
+      thumb: `images/thumbs/${outName}`,
       original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
       alt: labelFromFilename(file),
       date: gitAddedDate(srcPath, gitDates),
@@ -252,6 +266,7 @@ async function processImages(repoSlug, branch) {
       height: metadata.height,
       camera: meta ? meta.camera : undefined,
       film: meta ? meta.film : undefined,
+      frame: meta ? meta.frame : undefined,
     };
   });
 
