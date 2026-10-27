@@ -117,26 +117,21 @@ show no caption (the build logs a warning so typos are easy to spot).
 
 ## Gear page
 
-[`gear.yaml`](gear.yaml) drives the Gear page: an optional `intro` line and a
-list of `groups`, each with a `title` and `items`. Each item has a `name`, and
-optionally a `tag` (shown on the right: `Body`, `Lens`, `App`…), a `url`
-(makes the name a link) and a `note` (smaller text underneath):
+[`gear.md`](gear.md) drives the Gear page. The paragraph under the top
+`# Gear` heading is the intro; each `## Heading` is a group and each list item
+a row. A tag in backticks (`` `Body` ``, `` `Lens` ``, `` `App` ``…) shows on
+the right, text after ` — ` is a note underneath, and `[Name](url)` makes the
+item a link:
 
-```yaml
-intro: Old Minoltas, a Leica and a couple of Soviet bodies.
-groups:
-  - title: Minolta
-    items:
-      - { name: SRT 303, tag: Body }
-  - title: Tools
-    items:
-      - name: FilmCalc
-        tag: App
-        url: https://filmcalc.app
-        note: Price of shooting film.
+```md
+## Minolta
+- SRT 303 `Body`
+
+## Tools
+- [FilmCalc](https://filmcalc.app) `App` — Price of shooting film.
 ```
 
-If `gear.yaml` is missing or has no items, the Gear page and its nav link are
+If `gear.md` is missing or has no items, the Gear page and its nav link are
 hidden. Edits go live with the next build (pushing the change triggers one).
 
 ## How it works
@@ -150,7 +145,7 @@ hidden. Edits go live with the next build (pushing the change triggers one).
     `.cache/` between runs so each photo is only downloaded and resized once;
   - writes `images/manifest.json` (build output only) listing every photo,
     newest first;
-  - turns `config.yaml` and `gear.yaml` into `config.json` and `gear.json`
+  - turns `config.yaml` and `gear.md` into `config.json` and `gear.json`
     for the page, and bakes link-preview tags into `index.html`.
 - **Deploy:** the built `dist/` folder goes straight to GitHub Pages; nothing
   is written back to the repo.
@@ -176,7 +171,7 @@ resolves. Set `siteUrl` in `config.yaml` to match.
 
 ```
 config.yaml                     Site settings (name, links, fonts, avatar…)
-gear.yaml                       Gear list shown on the Gear page
+gear.md                         Gear list shown on the Gear page
 index.html                      Page structure
 css/style.css                   Styling, light/dark theme, photo grid
 js/app.js                       Renders Index, Favourites, Gear and the viewer
