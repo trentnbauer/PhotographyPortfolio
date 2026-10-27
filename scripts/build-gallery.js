@@ -7,6 +7,7 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const sharp = require('sharp');
 const YAML = require('yaml');
+const exifr = require('exifr');
 
 const ROOT = path.join(__dirname, '..');
 const IMAGES_DIR = path.join(ROOT, 'images');
@@ -184,36 +185,57 @@ function slugify(file) {
     .replace(/^-+|-+$/g, '');
 }
 
-function labelFromFilename(file) {
-  return path.parse(file).name.replace(/[-_]+/g, ' ');
+// ---------- Photo metadata ----------
+
+// Captions come from each original's own metadata (EXIF / XMP / IPTC). Film
+// scans mostly carry the lab scanner's details instead of the camera's, so
+// anything that came from a scanner is ignored rather than shown.
+const SCANNER_PATTERN = /noritsu|ez controller|frontier|fujifilm sp-|epson|perfection v|coolscan|nikon scan|plustek|opticfilm|pakon|imacon|flextight|silverfast|vuescan|reflecta|pacific image|kodak professional|scanner/i;
+
+function metaText(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(metaText).filter(Boolean).join(', ');
+  if (typeof value === 'object') return metaText(value.value);
+  return String(value).replace(/\0/g, '').trim();
 }
 
-function humanizeToken(token) {
-  return token
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/([A-Za-z])(\d)/g, '$1 $2')
-    .replace(/(\d)([A-Za-z])/g, '$1 $2')
-    .trim();
+function formatExposure(m) {
+  const parts = [];
+  if (m.FocalLength) parts.push(`${Math.round(m.FocalLength)}mm`);
+  if (m.FNumber) parts.push(`f/${Number(m.FNumber.toFixed(1))}`);
+  if (m.ExposureTime) {
+    const t = m.ExposureTime;
+    parts.push(t >= 1 ? `${Number(t.toFixed(1))}s` : `1/${Math.round(1 / t)}s`);
+  }
+  const iso = m.ISO || m.ISOSpeedRatings;
+  if (iso) parts.push(`ISO ${Array.isArray(iso) ? iso[0] : iso}`);
+  return parts.join(' ');
 }
 
-// Filenames follow {year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}, e.g.
-// "2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg" or, without a roll number,
-// "2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg" — camera and film stock are
-// always the 3rd and 4th hyphen-separated segments. Only used for the
-// caption now; gallery order comes from git history (gitAddedDate) instead,
-// since roll/frame numbers reset independently per camera and aren't
-// comparable across different cameras sharing the same year/season.
-const FILENAME_PATTERN = /^\d{4}-(?:Summer|Autumn|Winter|Spring)-([^-]+)-([^-]+)-(?:R\d+-)?(\d+)$/;
-
-function parseFilename(file) {
-  const match = path.parse(file).name.match(FILENAME_PATTERN);
-  if (!match) return null;
-  const [, camera, film, frame] = match;
-  return {
-    camera: humanizeToken(camera),
-    film: humanizeToken(film),
-    frame,
+async function readPhotoMetadata(filePath) {
+  let m;
+  try {
+    m = await exifr.parse(filePath, { tiff: true, exif: true, xmp: true, iptc: true, mergeOutput: true });
+  } catch (e) {
+    return {};
+  }
+  if (!m) return {};
+  const make = metaText(m.Make);
+  const model = metaText(m.Model);
+  const fromScanner = SCANNER_PATTERN.test(`${make} ${model}`);
+  const camera = fromScanner ? '' : (model.toLowerCase().startsWith(make.toLowerCase()) ? model : `${make} ${model}`).trim();
+  const info = {
+    title: metaText(m.title) || metaText(m.ObjectName) || metaText(m.XPTitle),
+    description: metaText(m.description) || metaText(m.ImageDescription) || metaText(m.Caption),
+    camera,
+    lens: fromScanner ? '' : metaText(m.LensModel) || metaText(m.Lens),
+    exposure: fromScanner ? '' : formatExposure(m),
   };
+  // A scanner's own text (e.g. its model in the description) isn't a caption either.
+  ['title', 'description'].forEach((key) => {
+    if (SCANNER_PATTERN.test(info[key])) info[key] = '';
+  });
+  return Object.fromEntries(Object.entries(info).filter(([, v]) => v));
 }
 
 function loadGitAddedDates() {
@@ -328,9 +350,14 @@ function cacheDir(hash) {
   return path.join(CACHE_DIR, hash);
 }
 
+// Bump when the cached per-photo data changes shape, so older cache entries
+// are rebuilt (which re-reads each original once).
+const CACHE_VERSION = 2;
+
 function readCached(hash) {
   try {
-    return JSON.parse(fs.readFileSync(path.join(cacheDir(hash), 'meta.json'), 'utf8'));
+    const meta = JSON.parse(fs.readFileSync(path.join(cacheDir(hash), 'meta.json'), 'utf8'));
+    return meta.version === CACHE_VERSION ? meta : null;
   } catch (e) {
     return null;
   }
@@ -349,7 +376,7 @@ async function resizeIntoCache(hash, srcPath) {
     .resize({ width: THUMB_DIMENSION, height: THUMB_DIMENSION, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: JPEG_QUALITY, progressive: true })
     .toFile(path.join(dir, 'thumb.jpg'));
-  const meta = { width: metadata.width, height: metadata.height };
+  const meta = { version: CACHE_VERSION, width: metadata.width, height: metadata.height, info: await readPhotoMetadata(srcPath) };
   fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta));
   return meta;
 }
@@ -472,24 +499,22 @@ async function processImages(repoSlug, branch) {
     fs.copyFileSync(path.join(cacheDir(photo.hash), 'full.jpg'), path.join(DIST_IMAGES_DIR, outName));
     fs.copyFileSync(path.join(cacheDir(photo.hash), 'thumb.jpg'), path.join(DIST_THUMBS_DIR, outName));
 
-    const meta = parseFilename(photo.name);
-    if (!meta) {
-      console.warn(`Warning: "${photo.name}" doesn't match the expected naming pattern — it won't show a camera/film caption.`);
-    }
-
+    const info = photo.meta.info || {};
     return {
       name: photo.name,
       hash: photo.hash,
       file: `images/${outName}`,
       thumb: `images/thumbs/${outName}`,
       original: photo.original || `images/${outName}`,
-      alt: labelFromFilename(photo.name),
+      alt: info.title || info.description || 'Photograph',
       date: photo.date,
       width: photo.meta.width,
       height: photo.meta.height,
-      camera: meta ? meta.camera : undefined,
-      film: meta ? meta.film : undefined,
-      frame: meta ? meta.frame : undefined,
+      title: info.title,
+      description: info.description,
+      camera: info.camera,
+      lens: info.lens,
+      exposure: info.exposure,
       favourite: photo.favourite || undefined,
     };
   });
