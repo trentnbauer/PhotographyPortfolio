@@ -86,8 +86,8 @@ and the build log warns about it. To remove a favourite, delete it from the
 **When it goes live:** the site rebuilds every hour (at :17). To update
 straight away, open **Actions → Build and deploy → Run workflow**.
 
-Gallery order is upload order, newest first. Name files following the
-[filename convention](#filename-convention) to get camera/film captions.
+Gallery order is upload order, newest first. Captions come from each photo's
+own metadata (see [Captions](#captions)).
 
 ### Committing photos instead
 
@@ -96,19 +96,30 @@ The build also picks up photos committed to an `images/` folder (and
 committed. GitHub limits committed files to 100MB each, and large libraries
 make the repo slow to clone, which is why releases are preferred.
 
-## Filename convention
+## Captions
 
-Scanner metadata is unreliable, so the camera/film caption in the photo viewer
-comes from the filename:
+The photo viewer's caption comes from each original's own metadata (EXIF,
+XMP and IPTC), read when the site builds:
+
+- **Title**, or the description if there's no title;
+- **Camera** (make and model) and **lens**;
+- **Exposure**: focal length, aperture, shutter speed and ISO.
+
+Film scans mostly carry the lab scanner's details (e.g. *Noritsu EZ
+Controller*) rather than the camera's, so anything that came from a scanner is
+ignored. A photo with no usable metadata simply has no caption. To add one,
+set the fields in Lightroom or Photoshop (*File → File Info*), or with
+[ExifTool](https://exiftool.org):
 
 ```
-{year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}
+exiftool -Title="Beach, Phillip Island" -Make=Minolta -Model="SRT 101" \
+  -LensModel="MC Rokkor-PF 58mm f/1.4" photo.jpg
 ```
 
-For example `2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg`, or without a roll
-number, `2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg`. `season` is one of
-`Summer`, `Autumn`, `Winter`, `Spring`. Other filenames still work; they just
-show no caption (the build logs a warning so typos are easy to spot).
+then upload the updated file to the release, deleting the old copy. Editing
+metadata changes the file, so the updated photo counts as a new upload: it
+moves to the top of the gallery and gets a NEW tag. Adding metadata before
+uploading avoids that.
 
 ## Gear page
 

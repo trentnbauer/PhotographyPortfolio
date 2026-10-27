@@ -436,10 +436,9 @@
 
       const pad = (n) => String(n).padStart(2, '0');
       count.textContent = `${pad(index + 1)} / ${pad(list.length)}`;
-      const cap = [entry.camera, entry.film].filter(Boolean).join(' · ');
-      caption.textContent = cap;
-      if (entry.frame) caption.append(el('span', { className: 'l-short', text: `${cap ? ' · ' : ''}${entry.frame}` }));
-      hint.textContent = `${entry.frame ? `Frame ${entry.frame} · ` : ''}← → Esc`;
+      // From the photo's own metadata (read at build time); empty when the file has none.
+      caption.textContent = [entry.title || entry.description, entry.camera, entry.lens, entry.exposure].filter(Boolean).join(' · ');
+      hint.textContent = '← → Esc';
     }
 
     function open(entries, i) {
