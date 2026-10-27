@@ -21,17 +21,14 @@ fonts:
 # Display picture next to your name. Remove the line to hide it.
 avatar: https://gravatar.com/avatar/322525ee3f5388602299881837c83382a0417d3c177e2ddc93ef37c13b668fac?s=400&d=mp
 
-# The site's own pages. "hover" (optional) is the tooltip shown when the
-# mouse rests on a nav item. Favourites isn't listed: it appears automatically
-# (as "Favourites" / "Favs") once the favourites release has a photo in it.
-# Gear only appears when gear.md has items in it.
+# The home page's nav label. "hover" (optional) is the tooltip shown when the
+# mouse rests on a nav item. Favourites and Gear aren't listed: they appear
+# automatically once the favourites release has a photo in it / gear.md has
+# items in it.
 pages:
   index:
     label: Index
     shortLabel: Home
-  gear:
-    label: Gear
-    shortLabel: Gear
 
 # Extra links in the nav, in order. Add as many as you like: when the row gets
 # too long, everything after Index and Favourites folds into a Menu.

@@ -372,23 +372,50 @@
     const count = document.getElementById('lb-count');
     const caption = document.getElementById('lb-caption');
     const hint = document.getElementById('lb-hint');
+    const frame = img.parentElement;
     let list = [];
     let index = 0;
     let loadToken = 0;
     let historyPushed = false;
+    let zoomed = false;
+
+    // Clicking the loaded original shows it at 100% (one image pixel per CSS pixel), keeping
+    // the clicked point under the pointer; the frame then scrolls to pan. Clicking again fits it.
+    function canZoom() {
+      if (img.classList.contains('is-loading') || !img.naturalWidth) return false;
+      return img.naturalWidth > img.clientWidth + 1 || img.naturalHeight > img.clientHeight + 1;
+    }
+
+    function setZoom(on, clientX, clientY) {
+      if (on === zoomed || (on && !canZoom())) return;
+      const rect = img.getBoundingClientRect();
+      const fx = clientX === undefined ? 0.5 : (clientX - rect.left) / rect.width;
+      const fy = clientY === undefined ? 0.5 : (clientY - rect.top) / rect.height;
+      zoomed = on;
+      lightbox.classList.toggle('is-zoomed', on);
+      if (!on) return;
+      const box = frame.getBoundingClientRect();
+      const px = clientX === undefined ? box.width / 2 : clientX - box.left;
+      const py = clientY === undefined ? box.height / 2 : clientY - box.top;
+      frame.scrollLeft = fx * img.naturalWidth - px;
+      frame.scrollTop = fy * img.naturalHeight - py;
+    }
 
     function show() {
       const entry = list[index];
       const token = ++loadToken;
       const full = entry.original || entry.file;
+      setZoom(false);
       img.alt = entry.alt || '';
-      // Only ever show the untouched original: keep the spinner up until it has loaded.
-      // The resized copy is used only if the original can't be fetched at all.
+      // Show the grid thumbnail (usually already cached) blurred under the spinner while the
+      // untouched original loads, then swap the original in once it's decoded, so the sharp
+      // photo is always the original. The resized copy is used only if the original fails.
       img.classList.add('is-loading');
-      img.removeAttribute('src');
+      img.src = entry.thumb || entry.file;
       spinner.hidden = false;
       const original = new Image();
-      original.onload = () => {
+      original.onload = async () => {
+        try { await original.decode(); } catch (e) { /* show it anyway */ }
         if (token !== loadToken) return;
         img.src = full;
         img.classList.remove('is-loading');
@@ -440,6 +467,7 @@
     function close({ fromPopstate } = {}) {
       if (lightbox.hidden) return;
       loadToken++;
+      setZoom(false);
       lightbox.hidden = true;
       bodyScrollLock.unlock();
       img.removeAttribute('src');
@@ -457,13 +485,61 @@
     lightbox.querySelectorAll('.lb-arrow').forEach((button) => {
       button.addEventListener('click', () => step(Number(button.dataset.step)));
     });
-    // Clicking the empty area around the photo closes the viewer.
+    let drag = null;
+    let dragged = false;
+    // Clicking the empty area around the photo closes the viewer (or zooms back out).
     lightbox.addEventListener('click', (e) => {
-      if (e.target === lightbox || e.target.classList.contains('lb-stage') || e.target.classList.contains('lb-frame')) close();
+      if (dragged) {
+        // The click that ends a pan isn't a request to zoom out or close.
+        dragged = false;
+        return;
+      }
+      if (e.target === lightbox || e.target.classList.contains('lb-stage') || e.target === frame) {
+        if (zoomed) setZoom(false);
+        else close();
+      }
     });
+
+    // Drag to pan while zoomed (mouse; touch scrolls the frame natively). A drag isn't a click.
+    frame.addEventListener('pointerdown', (e) => {
+      dragged = false;
+      if (!zoomed || e.pointerType !== 'mouse' || e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, left: frame.scrollLeft, top: frame.scrollTop };
+      frame.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    frame.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) dragged = true;
+      frame.scrollLeft = drag.left - dx;
+      frame.scrollTop = drag.top - dy;
+    });
+    const endDrag = () => {
+      drag = null;
+      lightbox.classList.remove('is-dragging');
+    };
+    frame.addEventListener('pointerup', endDrag);
+    frame.addEventListener('pointercancel', endDrag);
+    frame.addEventListener('pointermove', () => { if (drag && dragged) lightbox.classList.add('is-dragging'); });
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dragged) {
+        dragged = false;
+        return;
+      }
+      setZoom(!zoomed, e.clientX, e.clientY);
+    });
+    img.addEventListener('load', () => img.classList.toggle('can-zoom', canZoom()));
+    window.addEventListener('resize', () => img.classList.toggle('can-zoom', canZoom()));
+
     document.addEventListener('keydown', (e) => {
       if (lightbox.hidden) return;
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') {
+        if (zoomed) setZoom(false);
+        else close();
+      }
       else if (e.key === 'ArrowRight') step(1);
       else if (e.key === 'ArrowLeft') step(-1);
     });
@@ -477,7 +553,8 @@
       touchY = e.touches[0].clientY;
     }, { passive: true });
     lightbox.addEventListener('touchend', (e) => {
-      if (touchX === null || !e.changedTouches.length) return;
+      // While zoomed, swipes pan the photo instead of changing it.
+      if (zoomed || touchX === null || !e.changedTouches.length) return;
       const dx = e.changedTouches[0].clientX - touchX;
       const dy = e.changedTouches[0].clientY - touchY;
       touchX = null;
