@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..');
@@ -12,6 +14,8 @@ const FAVOURITES_SUBDIR = 'favourites';
 const DIST_DIR = path.join(ROOT, 'dist');
 const DIST_IMAGES_DIR = path.join(DIST_DIR, 'images');
 const DIST_THUMBS_DIR = path.join(DIST_IMAGES_DIR, 'thumbs');
+const CACHE_DIR = path.join(ROOT, '.cache', 'images');
+const ASSET_HASHES_FILE = path.join(ROOT, '.cache', 'asset-hashes.json');
 const EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.gif', '.avif']);
 const MAX_DIMENSION = 2400;
 const JPEG_QUALITY = 82;
@@ -230,71 +234,213 @@ function listImages(dir, favourite) {
     .map((file) => ({ file, relPath: favourite ? `${FAVOURITES_SUBDIR}/${file}` : file, favourite }));
 }
 
-async function processImages(repoSlug, branch) {
-  if (!fs.existsSync(IMAGES_DIR)) {
-    console.log('No images/ directory found — skipping gallery, placeholder will render.');
-    return [];
-  }
+// ---------- Release photos ----------
 
+// Photos can also live as files attached to two GitHub releases, so originals
+// don't bloat the repo: everything in RELEASE_ALL shows in the gallery, and
+// anything in RELEASE_FAVOURITES also shows on the Favourites page.
+const RELEASE_ALL = 'images';
+const RELEASE_FAVOURITES = 'favourites';
+
+async function githubJSON(url) {
+  const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'photography-portfolio-build' };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const res = await fetch(url, { headers });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GitHub API ${res.status} for ${url}`);
+  return res.json();
+}
+
+async function listReleaseAssets(repoSlug, tag) {
+  const release = await githubJSON(`https://api.github.com/repos/${repoSlug}/releases/tags/${tag}`);
+  if (!release) return [];
+  const assets = [];
+  for (let page = 1; ; page++) {
+    const batch = await githubJSON(`https://api.github.com/repos/${repoSlug}/releases/${release.id}/assets?per_page=100&page=${page}`);
+    if (!batch || !batch.length) break;
+    assets.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return assets.filter((asset) => EXTENSIONS.has(path.extname(asset.name).toLowerCase()));
+}
+
+async function downloadTo(url, dest) {
+  const res = await fetch(url, { headers: { 'User-Agent': 'photography-portfolio-build' } });
+  if (!res.ok) throw new Error(`Download failed (${res.status}) for ${url}`);
+  await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(dest));
+}
+
+// ---------- Resize cache ----------
+
+// Resized copies are cached by content hash in .cache/ (kept between CI runs
+// by actions/cache), so each original is only downloaded and resized once.
+function cacheDir(hash) {
+  return path.join(CACHE_DIR, hash);
+}
+
+function readCached(hash) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(cacheDir(hash), 'meta.json'), 'utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+
+async function resizeIntoCache(hash, srcPath) {
+  const dir = cacheDir(hash);
+  fs.mkdirSync(dir, { recursive: true });
+  const full = path.join(dir, 'full.jpg');
+  const metadata = await sharp(srcPath)
+    .rotate()
+    .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: JPEG_QUALITY, progressive: true })
+    .toFile(full);
+  await sharp(full)
+    .resize({ width: THUMB_DIMENSION, height: THUMB_DIMENSION, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: JPEG_QUALITY, progressive: true })
+    .toFile(path.join(dir, 'thumb.jpg'));
+  const meta = { width: metadata.width, height: metadata.height };
+  fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta));
+  return meta;
+}
+
+function loadAssetHashes() {
+  try {
+    return JSON.parse(fs.readFileSync(ASSET_HASHES_FILE, 'utf8'));
+  } catch (e) {
+    return {};
+  }
+}
+
+// ---------- Collecting photos ----------
+
+async function localCandidates(repoSlug, branch) {
+  if (!fs.existsSync(IMAGES_DIR)) return [];
   const files = listImages(IMAGES_DIR, false).concat(listImages(path.join(IMAGES_DIR, FAVOURITES_SUBDIR), true));
+  const gitDates = loadGitAddedDates();
+  return mapWithConcurrency(files, 8, async ({ file, relPath, favourite }) => {
+    const srcPath = path.join(IMAGES_DIR, relPath);
+    const hash = await hashFile(srcPath);
+    const meta = readCached(hash) || await resizeIntoCache(hash, srcPath);
+    return {
+      name: file,
+      hash,
+      meta,
+      favourite,
+      date: gitAddedDate(srcPath, gitDates),
+      original: originalUrl(repoSlug, branch, relPath),
+    };
+  });
+}
+
+async function releaseCandidates(repoSlug) {
+  if (!repoSlug) return [];
+  const assetHashes = loadAssetHashes();
+  const tmpDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'release-photos-'));
+  const candidates = [];
+  try {
+    for (const [tag, favourite] of [[RELEASE_ALL, false], [RELEASE_FAVOURITES, true]]) {
+      const assets = await listReleaseAssets(repoSlug, tag);
+      const results = await mapWithConcurrency(assets, 4, async (asset) => {
+        // GitHub reports a sha256 digest for newer uploads; otherwise reuse the
+        // hash from an earlier build, and only download when neither is known.
+        let hash = asset.digest && asset.digest.startsWith('sha256:')
+          ? asset.digest.slice(7, 19)
+          : assetHashes[asset.id];
+        let meta = hash && readCached(hash);
+        if (!meta) {
+          const tmp = path.join(tmpDir, `${asset.id}${path.extname(asset.name)}`);
+          await downloadTo(asset.browser_download_url, tmp);
+          hash = await hashFile(tmp);
+          meta = readCached(hash) || await resizeIntoCache(hash, tmp);
+          fs.rmSync(tmp, { force: true });
+        }
+        assetHashes[asset.id] = hash;
+        return {
+          name: asset.name,
+          hash,
+          meta,
+          favourite,
+          date: asset.created_at,
+          original: asset.browser_download_url,
+        };
+      });
+      candidates.push(...results);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(ASSET_HASHES_FILE), { recursive: true });
+    fs.writeFileSync(ASSET_HASHES_FILE, JSON.stringify(assetHashes));
+  }
+  return candidates;
+}
+
+// The same file can turn up more than once (in images/ and a release, or in
+// both releases): identical content is one photo, dated by its earliest
+// upload, and a favourite if any copy is.
+function mergeByHash(candidates) {
+  const byHash = new Map();
+  const hashesByName = new Map();
+  candidates.forEach((c) => {
+    const names = hashesByName.get(c.name) || new Set();
+    names.add(c.hash);
+    hashesByName.set(c.name, names);
+    const existing = byHash.get(c.hash);
+    if (!existing) {
+      byHash.set(c.hash, { ...c });
+      return;
+    }
+    if (new Date(c.date) < new Date(existing.date)) {
+      byHash.set(c.hash, { ...c, favourite: existing.favourite || c.favourite });
+    } else if (c.favourite) {
+      existing.favourite = true;
+    }
+  });
+  hashesByName.forEach((hashes, name) => {
+    if (hashes.size > 1) {
+      console.warn(`Warning: "${name}" exists as ${hashes.size} different files — it will show ${hashes.size} times. Upload the exact same file to both releases to show it once.`);
+    }
+  });
+  return [...byHash.values()];
+}
+
+async function processImages(repoSlug, branch) {
+  let releases = [];
+  try {
+    releases = await releaseCandidates(repoSlug);
+  } catch (err) {
+    // A CI build without the release photos would publish a half-empty site, so fail instead.
+    if (process.env.CI) throw err;
+    console.warn(`Skipping release photos: ${err.message}`);
+  }
+  const photos = mergeByHash((await localCandidates(repoSlug, branch)).concat(releases));
 
   fs.mkdirSync(DIST_THUMBS_DIR, { recursive: true });
+  const entries = photos.map((photo) => {
+    // The hash keeps names unique even if two different files share a filename.
+    const outName = `${slugify(photo.name)}-${photo.hash.slice(0, 8)}.jpg`;
+    fs.copyFileSync(path.join(cacheDir(photo.hash), 'full.jpg'), path.join(DIST_IMAGES_DIR, outName));
+    fs.copyFileSync(path.join(cacheDir(photo.hash), 'thumb.jpg'), path.join(DIST_THUMBS_DIR, outName));
 
-  const gitDates = loadGitAddedDates();
-  const outNameSources = new Map();
-
-  const entries = await mapWithConcurrency(files, 8, async ({ file, relPath, favourite }) => {
-    const srcPath = path.join(IMAGES_DIR, relPath);
-    const outName = `${slugify(file)}.jpg`;
-    const outPath = path.join(DIST_IMAGES_DIR, outName);
-    const thumbPath = path.join(DIST_THUMBS_DIR, outName);
-
-    const collidesWith = outNameSources.get(outName);
-    if (collidesWith) {
-      throw new Error(`Filename collision: "${relPath}" and "${collidesWith}" both produce "${outName}" — rename or remove one of them.`);
-    }
-    outNameSources.set(outName, relPath);
-
-    let metadata;
-    const srcMtime = fs.statSync(srcPath).mtimeMs;
-    if (fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= srcMtime) {
-      metadata = await sharp(outPath).metadata();
-    } else {
-      const image = sharp(srcPath).rotate();
-      const resized = image.resize({
-        width: MAX_DIMENSION,
-        height: MAX_DIMENSION,
-        fit: 'inside',
-        withoutEnlargement: true,
-      });
-      metadata = await resized.jpeg({ quality: JPEG_QUALITY, progressive: true }).toFile(outPath);
-    }
-    if (!fs.existsSync(thumbPath) || fs.statSync(thumbPath).mtimeMs < srcMtime) {
-      await sharp(outPath)
-        .resize({ width: THUMB_DIMENSION, height: THUMB_DIMENSION, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: JPEG_QUALITY, progressive: true })
-        .toFile(thumbPath);
-    }
-
-    const meta = parseFilename(file);
+    const meta = parseFilename(photo.name);
     if (!meta) {
-      console.warn(`Warning: "${file}" doesn't match the expected naming pattern — it won't show a camera/film caption.`);
+      console.warn(`Warning: "${photo.name}" doesn't match the expected naming pattern — it won't show a camera/film caption.`);
     }
 
     return {
-      name: file,
-      hash: await hashFile(srcPath),
+      name: photo.name,
+      hash: photo.hash,
       file: `images/${outName}`,
       thumb: `images/thumbs/${outName}`,
-      original: originalUrl(repoSlug, branch, relPath) || `images/${outName}`,
-      alt: labelFromFilename(file),
-      date: gitAddedDate(srcPath, gitDates),
-      width: metadata.width,
-      height: metadata.height,
+      original: photo.original || `images/${outName}`,
+      alt: labelFromFilename(photo.name),
+      date: photo.date,
+      width: photo.meta.width,
+      height: photo.meta.height,
       camera: meta ? meta.camera : undefined,
       film: meta ? meta.film : undefined,
       frame: meta ? meta.frame : undefined,
-      favourite: favourite || undefined,
+      favourite: photo.favourite || undefined,
     };
   });
 
