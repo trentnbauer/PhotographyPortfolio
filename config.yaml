@@ -24,6 +24,7 @@ avatar: https://gravatar.com/avatar/322525ee3f5388602299881837c83382a0417d3c177e
 # The site's own pages. "hover" (optional) is the tooltip shown when the
 # mouse rests on a nav item. Favourites isn't listed: it appears automatically
 # (as "Favourites" / "Favs") once the favourites release has a photo in it.
+# Gear only appears when gear.yaml has items in it.
 pages:
   index:
     label: Index

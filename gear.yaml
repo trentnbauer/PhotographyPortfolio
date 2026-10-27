@@ -1,0 +1,54 @@
+# The Gear page. Remove every group (or this file) to hide the page and its
+# nav link.
+#
+# intro:   the line next to the big "Gear" heading (optional)
+# groups:  shown in order; each has a title and a list of items
+#   item fields:
+#     name  (required)  what's shown
+#     tag   (optional)  small label on the right: Body, Lens, Colour, App...
+#     url   (optional)  makes the name a link
+#     note  (optional)  smaller text under the name
+#
+# Each group's count reads "N apps" if every tag is App, "N stocks" if every
+# tag is a film type (Colour, B&W, Slide, Mystery), otherwise "N pieces".
+
+intro: Old Minoltas, a Leica and a couple of Soviet bodies. Mostly manual, mostly older than me.
+
+groups:
+  - title: Minolta
+    items:
+      - { name: SRT 303, tag: Body }
+      - { name: SRT Super, tag: Body }
+      - { name: PF 58mm f1.4, tag: Lens }
+      - { name: PG 50mm f1.4, tag: Lens }
+      - { name: SG 28mm f3.5, tag: Lens }
+      - { name: PF 135mm f2.8, tag: Lens }
+
+  - title: Leitz
+    items:
+      - { name: Leica IIIc, tag: Body }
+      - { name: Elmar 3.5 (red scale), tag: Lens }
+
+  - title: FED / Soviet
+    items:
+      - { name: 1950 Zorki 1b, tag: Body }
+      - { name: 1956 Zenit C, tag: Body }
+      - { name: Industar 22 collapsible, tag: Lens }
+      - { name: Industar 22 (SLR), tag: Lens }
+      - { name: Helios 44 48mm f2 M39, tag: Lens }
+
+  - title: Film stocks
+    items:
+      - { name: Kodak ColorPlus 200, tag: Colour }
+      - { name: Random expired stock, tag: Mystery }
+
+  - title: Tools
+    items:
+      - name: FilmCalc
+        tag: App
+        url: https://filmcalc.app
+        note: Price of shooting film — handy for comparing stocks or labs.
+      - name: Light Meter
+        tag: App
+        url: https://play.google.com/store/apps/details?id=com.willblaschko.android.lightmeterv2.pro
+        note: For the cameras without a built-in meter.

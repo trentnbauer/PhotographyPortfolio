@@ -159,7 +159,7 @@
 
   // ---------- Nav ----------
 
-  function initNav(config, { hasFavourites }) {
+  function initNav(config, { hasFavourites, hasGear }) {
     const nav = document.getElementById('site-nav');
     const pages = config.pages || {};
     const page = (key, view, hash, label, short) => ({
@@ -172,8 +172,9 @@
     // Favourites only appears once there's at least one favourite photo.
     const primary = [page('index', 'index', '#', 'Index', 'Home')];
     if (hasFavourites) primary.push(page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'));
+    // Gear likewise only appears when gear.yaml has something in it.
     const items = primary.concat(
-      page('gear', 'gear', '#gear', 'Gear', 'Gear'),
+      hasGear ? [page('gear', 'gear', '#gear', 'Gear', 'Gear')] : [],
     ).concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url, hover: l.hover })));
 
     const labelled = (item) => [
@@ -237,12 +238,12 @@
 
   // ---------- Views ----------
 
-  function initRouting(onShow, { hasFavourites }) {
+  function initRouting(onShow, { hasFavourites, hasGear }) {
     const sections = { index: 'view-index', favs: 'view-favs', gear: 'view-gear' };
     let current = null;
     function show() {
       let view = VIEWS[location.hash.replace(/^#/, '')] || 'index';
-      if (view === 'favs' && !hasFavourites) view = 'index';
+      if ((view === 'favs' && !hasFavourites) || (view === 'gear' && !hasGear)) view = 'index';
       if (view === current) return;
       const first = current === null;
       current = view;
@@ -318,59 +319,6 @@
 
   // ---------- Gear ----------
 
-  function parseGearItem(text) {
-    let name = text;
-    let href = '';
-    let rest = '';
-    const link = text.match(/^\[(.+?)\]\((.+?)\)\s*(.*)$/);
-    if (link) {
-      [, name, href, rest] = link;
-    } else {
-      const split = text.match(/^(.*?)\s*((?:`[^`]+`|—\s).*)?$/);
-      name = split[1];
-      rest = split[2] || '';
-    }
-    let tag = '';
-    const tagMatch = rest.match(/^`([^`]+)`\s*/);
-    if (tagMatch) {
-      tag = tagMatch[1];
-      rest = rest.slice(tagMatch[0].length);
-    }
-    let note = rest.replace(/^—\s*/, '').trim();
-    // Older gear.md wrote link notes in brackets: "[FilmCalc](url) (Calculates ...)".
-    const bracketed = note.match(/^\((.*)\)$/);
-    if (bracketed) note = bracketed[1].replace(/^./, (c) => c.toUpperCase());
-    return { name: name.trim(), href, tag, note };
-  }
-
-  function parseGear(md) {
-    const result = { intro: '', groups: [] };
-    let current = null;
-    let sawTitle = false;
-    md.replace(/<!--[\s\S]*?-->/g, '').split('\n').forEach((raw) => {
-      const line = raw.trim();
-      if (!line) return;
-      const heading = line.match(/^(#{1,3})\s+(.*)/);
-      if (heading) {
-        if (!sawTitle && heading[1] === '#') {
-          sawTitle = true;
-          return;
-        }
-        current = { title: heading[2], items: [] };
-        result.groups.push(current);
-        return;
-      }
-      const item = line.match(/^[-*]\s+(.*)/);
-      if (item && current) {
-        current.items.push(parseGearItem(item[1]));
-      } else if (!current && !result.intro) {
-        result.intro = line;
-      }
-    });
-    result.groups = result.groups.filter((group) => group.items.length);
-    return result;
-  }
-
   function gearCount(items) {
     const tags = items.map((item) => item.tag.toLowerCase());
     let unit = ['piece', 'pieces'];
@@ -379,21 +327,9 @@
     return `${items.length} ${unit[items.length === 1 ? 0 : 1]}`;
   }
 
-  async function loadGear(gearUrl) {
-    let text = null;
-    for (const url of [gearUrl, 'gear.md'].filter(Boolean)) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (res.ok) { text = await res.text(); break; }
-      } catch (e) { /* try the next source */ }
-    }
+  // gear is dist/gear.json, built from gear.yaml.
+  function renderGear(gear) {
     const groupsEl = document.getElementById('gear-groups');
-    if (!text) {
-      groupsEl.textContent = 'Could not load gear.md.';
-      return;
-    }
-    const gear = parseGear(text);
-
     const intro = document.getElementById('gear-intro');
     intro.textContent = gear.intro;
     intro.hidden = !gear.intro;
@@ -402,8 +338,8 @@
     gear.groups.forEach((group) => {
       const items = group.items.map((item) => el('div', { className: 'gear-item' }, [
         el('div', { className: 'gear-text' }, [
-          item.href
-            ? el('a', { className: 'gear-name', href: item.href, target: '_blank', rel: 'noopener noreferrer', text: `${item.name} ↗` })
+          item.url
+            ? el('a', { className: 'gear-name', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: `${item.name} ↗` })
             : el('span', { className: 'gear-name', text: item.name }),
           item.note ? el('span', { className: 'gear-note', text: item.note }) : '',
         ]),
@@ -561,17 +497,15 @@
     // Favourites are the photos in the favourites release or images/favourites/ (flagged by the build).
     const favourites = manifest.filter((entry) => entry.favourite);
     const hasFavourites = favourites.length > 0;
-    const layoutNav = initNav(config, { hasFavourites });
+    const gear = (await loadJSON('gear.json')) || { groups: [] };
+    const hasGear = gear.groups.length > 0;
+    const layoutNav = initNav(config, { hasFavourites, hasGear });
     const openLightbox = initLightbox();
+    if (hasGear) renderGear(gear);
 
-    let gearLoaded = false;
     initRouting((view) => {
       if (view === 'index') layoutNav();
-      if (view === 'gear' && !gearLoaded) {
-        gearLoaded = true;
-        loadGear(config.gearUrl);
-      }
-    }, { hasFavourites });
+    }, { hasFavourites, hasGear });
 
     document.getElementById('empty-hint').hidden = manifest.length > 0;
     renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
