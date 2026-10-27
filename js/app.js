@@ -598,7 +598,9 @@
     const manifest = (await loadJSON('images/manifest.json')) || [];
     document.getElementById('empty-hint').hidden = manifest.length > 0;
     renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
-    renderGrid(document.getElementById('favs-gallery'), pickFavourites(config, manifest), { onOpen: openLightbox });
+    const favourites = pickFavourites(config, manifest);
+    document.getElementById('favs-empty').hidden = favourites.length > 0;
+    renderGrid(document.getElementById('favs-gallery'), favourites, { onOpen: openLightbox });
   }
 
   init();
