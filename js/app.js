@@ -172,7 +172,7 @@
     // Favourites only appears once there's at least one favourite photo.
     const primary = [page('index', 'index', '#', 'Index', 'Home')];
     if (hasFavourites) primary.push(page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'));
-    // Gear likewise only appears when gear.yaml has something in it.
+    // Gear likewise only appears when gear.md has something in it.
     const items = primary.concat(
       hasGear ? [page('gear', 'gear', '#gear', 'Gear', 'Gear')] : [],
     ).concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url, hover: l.hover })));
@@ -327,7 +327,7 @@
     return `${items.length} ${unit[items.length === 1 ? 0 : 1]}`;
   }
 
-  // gear is dist/gear.json, built from gear.yaml.
+  // gear is dist/gear.json, built from gear.md.
   function renderGear(gear) {
     const groupsEl = document.getElementById('gear-groups');
     const intro = document.getElementById('gear-intro');
