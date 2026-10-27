@@ -1,192 +1,191 @@
 # Photography Portfolio
 
 A minimal, framework-free photography portfolio: a contact-sheet style grid of
-your photos sorted by upload date, a Favourites page, a Gear page, a photo
-viewer and a light/dark theme toggle. Push a full-resolution photo to `images/`, and GitHub Actions
-automatically resizes it into a fast, progressive JPEG and redeploys the site —
-no manual build step, no third-party accounts, no secrets.
+your photos (newest first), a Favourites page, a Gear page, a full-resolution
+photo viewer and a light/dark theme. GitHub Actions resizes your photos and
+deploys the site to GitHub Pages — no servers, no paid services, no secrets to
+manage.
 
-This repo is a **template**: it ships with placeholder photos/name and anyone
-can fork or clone it to build their own version. Everything here — code,
-config, and photos — is public, which is what makes the automatic
-build-on-push pipeline possible for free (see [How it works](#how-it-works)).
+This repo is a **template**: anyone can fork or clone it to build their own
+version. Everything here — code, config, and photos — is public, which is what
+lets the whole pipeline run free on GitHub.
 
 ## Quick start
 
 1. Fork or clone this repo.
-2. Edit `config.json` with your own details:
-   ```json
-   {
-     "photographerName": "Your Name",
-     "photographerShortName": "YN",
-     "tagline": "Hobby film photographer from Somewhere",
-     "siteUrl": "https://yourdomain.com",
-     "accentColor": "oklch(0.58 0.13 35)",
-     "fonts": { "display": "Archivo", "body": "Archivo", "mono": "JetBrains Mono" },
-     "avatar": "https://gravatar.com/avatar/<hash>?s=400&d=mp",
-     "pages": {
-       "index": { "label": "Index", "shortLabel": "Home" },
-       "favourites": { "label": "Favourites", "shortLabel": "Favs" },
-       "gear": { "label": "Gear", "shortLabel": "Gear" }
-     },
-     "headerLinks": [
-       { "label": "Instagram", "shortLabel": "IG", "url": "https://instagram.com/yourhandle" }
-     ]
-   }
-   ```
-   - Every name has a long version (desktop) and a `shortLabel` of 4 characters
-     or fewer (phones). Longer short labels are cut to 4 with a console warning.
-   - `headerLinks` can hold any number of links. When the nav row gets too long,
-     Index and Favourites stay visible and the rest fold into a ☰ Menu.
-   - `fonts` takes any Google Fonts family names; they're loaded automatically.
-   - `avatar` is optional; leave it out to hide the display picture.
-   - `accentColor` accepts any valid CSS color. `siteUrl` is used for the
-     social-preview image (`og:image`/`og:url`); without it, the build falls
-     back to your `github.io` URL.
-3. Drop your photos into `images/` (jpg, jpeg, png, webp, tiff, gif, avif —
-   any resolution, GitHub's limit is 100MB per file), named following the
-   [filename convention](#filename-convention) below.
-4. Commit and push. GitHub Actions takes it from there.
-5. Turn on GitHub Pages once (Settings → Pages → Source: **GitHub Actions**).
-   After the first successful workflow run, your site is live at
-   `https://<username>.github.io/<repo>/`.
+2. Edit [`config.yaml`](config.yaml) with your details (see [Configuration](#configuration)).
+3. Turn on GitHub Pages once: **Settings → Pages → Source: GitHub Actions**.
+4. Add photos (see [Adding photos](#adding-photos)).
 
-To preview locally before pushing:
+After the first successful workflow run, your site is live at
+`https://<username>.github.io/<repo>/`.
+
+To preview locally:
 ```
 npm install
 npm run build
 cd dist && python3 -m http.server 8080
 ```
-Open http://localhost:8080. With no photos yet, the page shows a short hint
-on how to add them.
+Open http://localhost:8080. With no photos yet, the page shows a short hint.
 
-## How it works
+## Configuration
 
-- `images/` holds your original, full-resolution photos, committed as-is.
-- On every push, `.github/workflows/deploy.yml` runs `npm run build`
-  (`scripts/build-gallery.js`), which uses [sharp](https://sharp.pixelplumb.com/)
-  to resize each photo (capped at 2400px, so nobody downloads an 80MB scan to
-  view a gallery thumbnail) plus a 1200px copy for the grid, both as
-  **progressive JPEGs** — the format browsers render low-resolution-first
-  while the rest streams in, so photos appear to load fast-then-sharpen.
-- The build also writes `images/manifest.json` (inside the build output only,
-  not committed) listing every photo, sorted newest first by the date it was
-  added to the repo (from git history, falling back to the file's mtime for
-  photos that aren't committed yet).
-- The workflow deploys the built output directly to GitHub Pages. Nothing is
-  written back to your `main` branch; resized images and the manifest are
-  regenerated fresh on every push.
-- Clicking a gallery photo opens it in a viewer (arrow keys, swipe, Esc)
-  that shows only the **original, untouched file** (full resolution, no
-  compression applied), loaded directly from the repo via
-  `raw.githubusercontent.com`. The photos either side are preloaded so
-  stepping through is quick. Only the small gallery thumbnail
-  is lossy-compressed — the original is never modified and isn't duplicated
-  into the deployed site, so a large library of full-res scans doesn't risk
-  hitting GitHub Pages' recommended ~1GB site size.
+Everything about the site lives in `config.yaml`; each setting is commented in
+the file itself. In short:
 
-- The build also records a short SHA-256 fingerprint of each original's
-  contents. Each visitor's browser (localStorage) remembers which
-  fingerprints were in the gallery on their last visit. Anything added since
-  gets an orange outline and a NEW tag for the whole visit (reloads
-  included); a visit ends after 30 minutes away. First-time visitors see no tags. Because it goes by file
-  contents, renaming a photo doesn't make it look new, but replacing it with
-  an edited version does.
+| Setting | What it does |
+|---|---|
+| `photographerName` / `photographerShortName` | Your name: the long one on desktop, the short one (≤ 4 characters) on phones. |
+| `tagline` | The line under your name. |
+| `siteUrl` | Your domain, used for link previews (`og:image`/`og:url`). Without it the build uses your `github.io` address. |
+| `accentColor` | Any CSS colour (oklch, hex…). |
+| `fonts` | `display`, `body` and `mono` — any Google Fonts family names; loaded automatically. |
+| `avatar` | Display picture next to your name. Leave it out to hide it. |
+| `pages` | Labels for the Index and Gear pages. (Favourites and Gear only appear when they have something to show.) |
+| `headerLinks` | Extra links in the nav (Instagram, eBay…), as many as you like. |
 
-Because everything (code, config, photos) is public in this repo, there are
-no secrets or credentials to manage — the whole pipeline runs on GitHub's
-free Actions minutes for public repos and free GitHub Pages hosting.
+Every page and link has a `label` (desktop) and a `shortLabel` of 4 characters
+or fewer (phones; longer ones are cut to 4 with a console warning). Pages and
+links can also have a `hover` — the tooltip shown when the mouse rests on it:
+
+```yaml
+headerLinks:
+  - label: eBay
+    shortLabel: eBay
+    url: https://www.ebay.com.au/usr/yourname
+    hover: The gear I'm selling
+```
+
+When the nav row gets too long, Index and Favourites stay visible and the rest
+fold into a ☰ Menu.
+
+## Adding photos
+
+Photos live as files attached to two GitHub releases, which keeps large scans
+out of the repo (each file can be up to 2GB, and GitHub stores it untouched):
+
+- **`images`** — every photo on the site.
+- **`favourites`** — photos also shown on the Favourites page.
+
+**To add photos:** open **Releases → Images → Edit**, drag the files into the
+attachments box and click **Update release** — or from a terminal,
+`gh release upload images *.jpg`. This works from a phone's browser too.
+
+The Favourites page (and its nav link) only appears once the `favourites`
+release has at least one photo.
+
+**To make a photo a favourite:** upload an **exact copy** of the same file to
+the `favourites` release. The build matches files by their contents, so the
+photo still shows only once in the main gallery, keeps its original date and
+doesn't get a NEW tag. If the copies differ (a re-export, say) it shows twice,
+and the build log warns about it. To remove a favourite, delete it from the
+`favourites` release.
+
+**To remove a photo:** delete it from the release.
+
+**When it goes live:** the site rebuilds every hour (at :17). To update
+straight away, open **Actions → Build and deploy → Run workflow**.
+
+Gallery order is upload order, newest first. Name files following the
+[filename convention](#filename-convention) to get camera/film captions.
+
+### Committing photos instead
+
+Photos committed to `images/` (and `images/favourites/` for favourites) are
+still picked up, and are dated by when they were first committed. Moving a
+committed photo into `images/favourites/` keeps its place in the gallery.
+GitHub limits committed files to 100MB each, and large libraries make the repo
+slow to clone, which is why releases are preferred.
+
+`.github/workflows/migrate-to-releases.yml` is a one-off workflow that copies
+committed photos into the releases, in the batches they were originally
+committed in, so the gallery keeps its order.
 
 ## Filename convention
 
-Photo metadata from scanners/film-editing software turned out to be
-unreliable — present on some files, present-but-blank on others, absent
-elsewhere — so the camera/film caption shown in the lightbox is derived
-entirely from the filename instead:
+Scanner metadata is unreliable, so the camera/film caption in the photo viewer
+comes from the filename:
 
 ```
 {year}-{season}-{camera}-{filmStock}-[R{roll}-]{frame}
 ```
 
-For example `2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg`, or without a
-roll number, `2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg`. `season` must be
-one of `Summer`, `Autumn`, `Winter`, `Spring`. A file that doesn't match
-this pattern still builds, sorts, and displays fine — it just won't show a
-camera/film caption (a build-time warning is logged so it's easy to spot a
-typo in a filename).
-
-Gallery order itself doesn't come from this filename — it comes from git
-history (see [How it works](#how-it-works)), since roll/frame numbers reset
-independently per camera and aren't comparable across different cameras
-used in the same season.
-
-## Photos in releases
-
-Photos can also be attached to two GitHub releases instead of committed,
-which keeps large scans out of the repo (each file can be up to 2GB and
-GitHub never compresses them):
-
-- **`images`** — every photo on the site.
-- **`favourites`** — photos also shown on the Favourites page.
-
-To add photos, open **Releases → Images → Edit**, drag files into the
-attachments box and click **Update release** (or run
-`gh release upload images *.jpg`). The site rebuilds every hour; to update
-straight away, open **Actions → Build and deploy → Run workflow**. A
-release photo's gallery date is when it was uploaded.
-
-To make a photo a favourite, upload an **exact copy** of the file to the
-`favourites` release. The build matches files by content, so a photo found
-in both releases (or in a release and `images/`) shows once in the gallery,
-keeps its earliest date, and doesn't get a NEW tag. If the copies differ
-(say, a re-export), it will show twice, and the build logs a warning.
-
-`.github/workflows/migrate-to-releases.yml` is a one-off workflow that copies
-the photos committed in `images/` into these releases, in the batches they
-were originally committed in so the gallery keeps its order.
-
-## Favourites folder
-
-Committed photos in `images/favourites/` also make up the Favourites page,
-and still appear in the main gallery. Moving a photo into that folder keeps
-its place in the gallery (dates are tracked by filename) and doesn't give it
-a NEW tag (those go by file contents).
+For example `2026-Autumn-KonicaAutoS2-FujiC200-R01-0024.jpg`, or without a roll
+number, `2026-Autumn-KonicaAutoS2-FujiC200-0024.jpg`. `season` is one of
+`Summer`, `Autumn`, `Winter`, `Spring`. Other filenames still work; they just
+show no caption (the build logs a warning so typos are easy to spot).
 
 ## Gear page
 
-`gear.md` drives the Gear page. Each `## Heading` is a group and each list
-item a row; a tag in backticks (`` `Body` ``, `` `Lens` ``, `` `App` ``…) shows on
-the right, and text after ` — ` is a note. The paragraph under the top
-`# Gear` heading is the intro, and the first link in a `## Selling` section
-becomes the bar at the bottom:
+[`gear.yaml`](gear.yaml) drives the Gear page: an optional `intro` line and a
+list of `groups`, each with a `title` and `items`. Each item has a `name`, and
+optionally a `tag` (shown on the right: `Body`, `Lens`, `App`…), a `url`
+(makes the name a link) and a `note` (smaller text underneath):
 
-```md
-## Minolta
-- SRT 303 `Body`
-- [FilmCalc](https://filmcalc.app) `App` — Price of shooting film.
+```yaml
+intro: Old Minoltas, a Leica and a couple of Soviet bodies.
+groups:
+  - title: Minolta
+    items:
+      - { name: SRT 303, tag: Body }
+  - title: Tools
+    items:
+      - name: FilmCalc
+        tag: App
+        url: https://filmcalc.app
+        note: Price of shooting film.
 ```
+
+If `gear.yaml` is missing or has no items, the Gear page and its nav link are
+hidden. Edits go live with the next build (pushing the change triggers one).
+
+## How it works
+
+- **Build** (`npm run build` → `scripts/build-gallery.js`), run by
+  `.github/workflows/deploy.yml` on every push, every hour, and on demand:
+  - collects photos from the `images` and `favourites` releases and from
+    `images/`, and merges identical files by their SHA-256;
+  - makes a 2400px copy and a 1200px grid thumbnail of each, as progressive
+    JPEGs (they render blurry-first, then sharpen), cached by content hash in
+    `.cache/` between runs so each photo is only downloaded and resized once;
+  - writes `images/manifest.json` (build output only) listing every photo,
+    newest first;
+  - turns `config.yaml` and `gear.yaml` into `config.json` and `gear.json`
+    for the page, and bakes link-preview tags into `index.html`.
+- **Deploy:** the built `dist/` folder goes straight to GitHub Pages; nothing
+  is written back to the repo.
+- **Photo viewer:** clicking a photo opens the **original, untouched file**,
+  straight from the release (or the repo), with arrow keys, swipe and Esc. The
+  photos either side are preloaded. Only grid thumbnails are compressed.
+- **NEW tags:** each visitor's browser remembers the fingerprints of the photos
+  on the site at their last visit. Anything added since gets an orange outline
+  and a NEW tag for the whole visit (a visit ends after 30 minutes away).
+  First-time visitors see no tags. Because it goes by file contents, renaming
+  a photo doesn't make it look new, but replacing it with an edit does.
+- **Theme:** follows the visitor's system setting until they toggle it; the
+  switch sweeps across the screen diagonally (instant with reduced motion).
 
 ## Custom domain + SSL
 
-In the repo's Settings → Pages, add your custom domain (e.g.
+In **Settings → Pages**, add your custom domain (e.g.
 `photography.example.com`) and add the CNAME record GitHub gives you at your
-DNS provider. GitHub Pages auto-provisions a free SSL certificate (Let's
-Encrypt) once DNS resolves — no extra cost or setup.
+DNS provider. GitHub Pages provisions a free SSL certificate once DNS
+resolves. Set `siteUrl` in `config.yaml` to match.
 
 ## Project structure
 
 ```
-index.html                Page structure
-css/style.css              Styling, light/dark theme, photo grid
-js/app.js                  Loads config, manifest + gear.md; renders Index, Favourites and Gear
-gear.md                    Gear list shown on the Gear page
-scripts/build-gallery.js   Resizes images/ and release photos into dist/, writes dist/images/manifest.json
-scripts/migrate-to-releases.js  One-off copy of images/ into the images/favourites releases
-config.json                 Your name, links, fonts, avatar (committed)
-images/                     Your original photos (committed, any resolution)
-images/favourites/          Photos also shown on the Favourites page
-.github/workflows/deploy.yml  Builds and deploys to GitHub Pages on every push
-dist/                       Build output (git-ignored, regenerated each run)
+config.yaml                     Site settings (name, links, fonts, avatar…)
+gear.yaml                       Gear list shown on the Gear page
+index.html                      Page structure
+css/style.css                   Styling, light/dark theme, photo grid
+js/app.js                       Renders Index, Favourites, Gear and the viewer
+scripts/build-gallery.js        Collects + resizes photos, writes dist/
+scripts/migrate-to-releases.js  One-off copy of images/ into the releases
+images/                         Committed photos (optional; releases preferred)
+.github/workflows/deploy.yml    Build + deploy on push, hourly and on demand
+.github/workflows/migrate-to-releases.yml  One-off copy into releases
+dist/, .cache/                  Build output and resize cache (git-ignored)
 ```
 
 ## Credits

@@ -1,0 +1,48 @@
+# Site settings. Every name has a long version (desktop) and a shortLabel of
+# 4 characters or fewer (phones); longer short labels are cut to 4.
+
+photographerName: Trent Bauer
+photographerShortName: TB
+tagline: Hobby film photographer from Victoria, Australia
+
+# Used for link previews (og:image / og:url). Without it the build falls back
+# to the github.io address.
+siteUrl: https://trentbauer.gallery
+
+# Any CSS colour: oklch, hex, rgb...
+accentColor: oklch(0.58 0.13 35)
+
+# Any Google Fonts family names; they're loaded automatically.
+fonts:
+  display: Archivo        # big headings (your name, Favourites, Gear)
+  body: Archivo           # bio and general text
+  mono: JetBrains Mono    # small uppercase labels, nav, captions
+
+# Display picture next to your name. Remove the line to hide it.
+avatar: https://gravatar.com/avatar/322525ee3f5388602299881837c83382a0417d3c177e2ddc93ef37c13b668fac?s=400&d=mp
+
+# The site's own pages. "hover" (optional) is the tooltip shown when the
+# mouse rests on a nav item. Favourites isn't listed: it appears automatically
+# (as "Favourites" / "Favs") once the favourites release has a photo in it.
+# Gear only appears when gear.yaml has items in it.
+pages:
+  index:
+    label: Index
+    shortLabel: Home
+  gear:
+    label: Gear
+    shortLabel: Gear
+
+# Extra links in the nav, in order. Add as many as you like: when the row gets
+# too long, everything after Index and Favourites folds into a Menu.
+headerLinks:
+  - label: Instagram
+    shortLabel: IG
+    url: https://www.instagram.com/_shotbytrent/
+  - label: eBay
+    shortLabel: eBay
+    url: https://www.ebay.com.au/usr/trentnbauer
+    hover: The gear I'm selling
+  - label: Resume
+    shortLabel: Rsme
+    url: https://trentbauer.com

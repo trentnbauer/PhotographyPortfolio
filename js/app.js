@@ -159,7 +159,7 @@
 
   // ---------- Nav ----------
 
-  function initNav(config) {
+  function initNav(config, { hasFavourites, hasGear }) {
     const nav = document.getElementById('site-nav');
     const pages = config.pages || {};
     const page = (key, view, hash, label, short) => ({
@@ -167,34 +167,37 @@
       hash,
       label: (pages[key] && pages[key].label) || label,
       short: shortLabel(pages[key] && pages[key].shortLabel, short),
+      hover: pages[key] && pages[key].hover,
     });
-    const items = [
-      page('index', 'index', '#', 'Index', 'Home'),
-      page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'),
-      page('gear', 'gear', '#gear', 'Gear', 'Gear'),
-    ].concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url })));
+    // Favourites only appears once there's at least one favourite photo.
+    const primary = [page('index', 'index', '#', 'Index', 'Home')];
+    if (hasFavourites) primary.push(page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'));
+    // Gear likewise only appears when gear.yaml has something in it.
+    const items = primary.concat(
+      hasGear ? [page('gear', 'gear', '#gear', 'Gear', 'Gear')] : [],
+    ).concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url, hover: l.hover })));
 
     const labelled = (item) => [
       el('span', { className: 'l-long', text: item.url ? `${item.label} ↗` : item.label }),
       el('span', { className: 'l-short', text: item.url ? `${item.short} ↗` : item.short }),
     ];
     const navLink = (item, className) => item.url
-      ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer' }, labelled(item))
-      : el('a', { className, href: item.hash, 'data-view': item.view }, labelled(item));
+      ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover }, labelled(item))
+      : el('a', { className, href: item.hash, 'data-view': item.view, title: item.hover }, labelled(item));
 
     // Index and Favourites always stay visible; everything else folds into the menu when the row is too long.
     nav.textContent = '';
-    items.forEach((item, i) => nav.append(navLink(item, i < 2 ? 'nav-item' : 'nav-item nav-extra')));
+    items.forEach((item, i) => nav.append(navLink(item, i < primary.length ? 'nav-item' : 'nav-item nav-extra')));
 
     const toggle = el('button', { className: 'nav-item menu-toggle', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true' }, [
       el('span', { className: 'burger', 'aria-hidden': 'true' }, [el('span'), el('span'), el('span')]),
       el('span', { className: 'menu-label', text: 'Menu' }),
     ]);
     const panel = el('span', { className: 'menu-panel', hidden: 'hidden' });
-    items.slice(2).forEach((item) => {
+    items.slice(primary.length).forEach((item) => {
       panel.append(item.url
-        ? el('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer', text: `${item.label} ↗` })
-        : el('a', { href: item.hash, 'data-view': item.view }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
+        ? el('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover, text: `${item.label} ↗` })
+        : el('a', { href: item.hash, 'data-view': item.view, title: item.hover }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
     });
     nav.append(el('span', { className: 'nav-menu' }, [toggle, panel]));
 
@@ -235,11 +238,12 @@
 
   // ---------- Views ----------
 
-  function initRouting(onShow) {
+  function initRouting(onShow, { hasFavourites, hasGear }) {
     const sections = { index: 'view-index', favs: 'view-favs', gear: 'view-gear' };
     let current = null;
     function show() {
-      const view = VIEWS[location.hash.replace(/^#/, '')] || 'index';
+      let view = VIEWS[location.hash.replace(/^#/, '')] || 'index';
+      if ((view === 'favs' && !hasFavourites) || (view === 'gear' && !hasGear)) view = 'index';
       if (view === current) return;
       const first = current === null;
       current = view;
@@ -315,64 +319,6 @@
 
   // ---------- Gear ----------
 
-  function parseGearItem(text) {
-    let name = text;
-    let href = '';
-    let rest = '';
-    const link = text.match(/^\[(.+?)\]\((.+?)\)\s*(.*)$/);
-    if (link) {
-      [, name, href, rest] = link;
-    } else {
-      const split = text.match(/^(.*?)\s*((?:`[^`]+`|—\s).*)?$/);
-      name = split[1];
-      rest = split[2] || '';
-    }
-    let tag = '';
-    const tagMatch = rest.match(/^`([^`]+)`\s*/);
-    if (tagMatch) {
-      tag = tagMatch[1];
-      rest = rest.slice(tagMatch[0].length);
-    }
-    let note = rest.replace(/^—\s*/, '').trim();
-    // Older gear.md wrote link notes in brackets: "[FilmCalc](url) (Calculates ...)".
-    const bracketed = note.match(/^\((.*)\)$/);
-    if (bracketed) note = bracketed[1].replace(/^./, (c) => c.toUpperCase());
-    return { name: name.trim(), href, tag, note };
-  }
-
-  function parseGear(md) {
-    const result = { intro: '', groups: [], selling: null };
-    let current = null;
-    let sawTitle = false;
-    let selling = false;
-    md.replace(/<!--[\s\S]*?-->/g, '').split('\n').forEach((raw) => {
-      const line = raw.trim();
-      if (!line) return;
-      const heading = line.match(/^(#{1,3})\s+(.*)/);
-      if (heading) {
-        if (!sawTitle && heading[1] === '#') {
-          sawTitle = true;
-          return;
-        }
-        selling = /^selling$/i.test(heading[2]);
-        current = selling ? null : { title: heading[2], items: [] };
-        if (current) result.groups.push(current);
-        return;
-      }
-      const item = line.match(/^[-*]\s+(.*)/);
-      if (selling) {
-        const link = line.match(/\[(.+?)\]\((.+?)\)/);
-        if (link && !result.selling) result.selling = { label: link[1], url: link[2] };
-      } else if (item && current) {
-        current.items.push(parseGearItem(item[1]));
-      } else if (!current && !result.intro) {
-        result.intro = line;
-      }
-    });
-    result.groups = result.groups.filter((group) => group.items.length);
-    return result;
-  }
-
   function gearCount(items) {
     const tags = items.map((item) => item.tag.toLowerCase());
     let unit = ['piece', 'pieces'];
@@ -381,21 +327,9 @@
     return `${items.length} ${unit[items.length === 1 ? 0 : 1]}`;
   }
 
-  async function loadGear(gearUrl) {
-    let text = null;
-    for (const url of [gearUrl, 'gear.md'].filter(Boolean)) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (res.ok) { text = await res.text(); break; }
-      } catch (e) { /* try the next source */ }
-    }
+  // gear is dist/gear.json, built from gear.yaml.
+  function renderGear(gear) {
     const groupsEl = document.getElementById('gear-groups');
-    if (!text) {
-      groupsEl.textContent = 'Could not load gear.md.';
-      return;
-    }
-    const gear = parseGear(text);
-
     const intro = document.getElementById('gear-intro');
     intro.textContent = gear.intro;
     intro.hidden = !gear.intro;
@@ -404,8 +338,8 @@
     gear.groups.forEach((group) => {
       const items = group.items.map((item) => el('div', { className: 'gear-item' }, [
         el('div', { className: 'gear-text' }, [
-          item.href
-            ? el('a', { className: 'gear-name', href: item.href, target: '_blank', rel: 'noopener noreferrer', text: `${item.name} ↗` })
+          item.url
+            ? el('a', { className: 'gear-name', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: `${item.name} ↗` })
             : el('span', { className: 'gear-name', text: item.name }),
           item.note ? el('span', { className: 'gear-note', text: item.note }) : '',
         ]),
@@ -419,13 +353,6 @@
         el('div', { className: 'gear-items' }, items),
       ]));
     });
-
-    const sellingEl = document.getElementById('gear-selling');
-    if (gear.selling) {
-      sellingEl.href = gear.selling.url;
-      document.getElementById('gear-selling-label').textContent = gear.selling.label;
-      sellingEl.hidden = false;
-    }
   }
 
   // ---------- Lightbox ----------
@@ -566,24 +493,22 @@
     initTheme();
     const config = (await loadJSON('config.json')) || {};
     applyConfig(config);
-    const layoutNav = initNav(config);
+    const manifest = (await loadJSON('images/manifest.json')) || [];
+    // Favourites are the photos in the favourites release or images/favourites/ (flagged by the build).
+    const favourites = manifest.filter((entry) => entry.favourite);
+    const hasFavourites = favourites.length > 0;
+    const gear = (await loadJSON('gear.json')) || { groups: [] };
+    const hasGear = gear.groups.length > 0;
+    const layoutNav = initNav(config, { hasFavourites, hasGear });
     const openLightbox = initLightbox();
+    if (hasGear) renderGear(gear);
 
-    let gearLoaded = false;
     initRouting((view) => {
       if (view === 'index') layoutNav();
-      if (view === 'gear' && !gearLoaded) {
-        gearLoaded = true;
-        loadGear(config.gearUrl);
-      }
-    });
+    }, { hasFavourites, hasGear });
 
-    const manifest = (await loadJSON('images/manifest.json')) || [];
     document.getElementById('empty-hint').hidden = manifest.length > 0;
     renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
-    // Favourites are the photos kept in images/favourites/ (flagged by the build).
-    const favourites = manifest.filter((entry) => entry.favourite);
-    document.getElementById('favs-empty').hidden = favourites.length > 0;
     renderGrid(document.getElementById('favs-gallery'), favourites, { onOpen: openLightbox });
   }
 
