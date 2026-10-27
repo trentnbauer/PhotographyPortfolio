@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const sharp = require('sharp');
 
@@ -103,6 +104,20 @@ async function mapWithConcurrency(items, limit, fn) {
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
+}
+
+// Short fingerprint of a photo's contents. The site uses it to spot photos a
+// visitor hasn't seen, so renaming a file doesn't make it look new but
+// re-uploading an edited version does. 12 hex chars (48 bits) is plenty to
+// keep a few thousand photos apart while keeping visitors' saved lists small.
+function hashFile(absPath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    fs.createReadStream(absPath)
+      .on('data', (chunk) => hash.update(chunk))
+      .on('end', () => resolve(hash.digest('hex').slice(0, 12)))
+      .on('error', reject);
+  });
 }
 
 function slugify(file) {
@@ -257,6 +272,7 @@ async function processImages(repoSlug, branch) {
 
     return {
       name: file,
+      hash: await hashFile(srcPath),
       file: `images/${outName}`,
       thumb: `images/thumbs/${outName}`,
       original: originalUrl(repoSlug, branch, file) || `images/${outName}`,
