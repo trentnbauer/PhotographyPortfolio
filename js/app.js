@@ -258,13 +258,16 @@
 
   // ---------- Gallery ----------
 
-  // A photo is "new" if it wasn't in the gallery when this visitor's previous visit ended.
+  // A photo is "new" if its content hash wasn't in the gallery when this visitor's previous
+  // visit ended. Hashing content (done at build time) means a renamed photo isn't new, while
+  // an edited re-upload is.
   // A visit lasts until they've been away for VISIT_GAP_MS, so NEW tags survive reloads and
   // page changes, then clear on the next visit. Comparing photo lists rather than upload dates
   // means a photo committed just before a visit but deployed just after still gets flagged.
   // First-time visitors have no previous visit, so nothing is new for them.
   function newPhotoChecker(manifest) {
-    const names = manifest.map((entry) => entry.name || entry.file);
+    const idOf = (entry) => entry.hash || entry.name || entry.file;
+    const ids = manifest.map(idOf);
     const now = Date.now();
     let saved = null;
     try {
@@ -277,9 +280,9 @@
       const newVisit = !(now - saved.lastActive < VISIT_GAP_MS);
       baseline = newVisit ? saved.seen : saved.baseline;
     }
-    storageSet(SEEN_KEY, JSON.stringify({ seen: names, baseline, lastActive: now }));
+    storageSet(SEEN_KEY, JSON.stringify({ seen: ids, baseline, lastActive: now }));
     const known = baseline ? new Set(baseline) : null;
-    return (entry) => !!known && !known.has(entry.name || entry.file);
+    return (entry) => !!known && !known.has(idOf(entry));
   }
 
   function renderGrid(container, entries, { isNew, onOpen }) {
