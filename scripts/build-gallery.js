@@ -75,26 +75,59 @@ function buildOgMeta(config, entries, siteUrl) {
   return tags.join('\n');
 }
 
-// gear.yaml → the Gear page's data (dist/gear.json). Empty groups and items
-// without a name are dropped; with no groups left the page is hidden.
+// gear.md → the Gear page's data (dist/gear.json). The paragraph under the
+// top "# " heading is the intro; each "## Heading" is a group of "- item"
+// rows, written as  Name `Tag` — note  or  [Name](url) `Tag` — note.
+// Groups with no items are dropped; with none left the page is hidden.
+function parseGearItem(text) {
+  let name = text;
+  let url = '';
+  let rest = '';
+  const link = text.match(/^\[(.+?)\]\((.+?)\)\s*(.*)$/);
+  if (link) {
+    [, name, url, rest] = link;
+  } else {
+    const split = text.match(/^(.*?)\s*((?:`[^`]+`|—\s).*)?$/);
+    name = split[1];
+    rest = split[2] || '';
+  }
+  let tag = '';
+  const tagMatch = rest.match(/^`([^`]+)`\s*/);
+  if (tagMatch) {
+    tag = tagMatch[1];
+    rest = rest.slice(tagMatch[0].length);
+  }
+  return { name: name.trim(), tag, url, note: rest.replace(/^—\s*/, '').trim() };
+}
+
 function loadGear() {
-  const file = path.join(ROOT, 'gear.yaml');
-  if (!fs.existsSync(file)) return { intro: '', groups: [] };
-  const gear = YAML.parse(fs.readFileSync(file, 'utf8')) || {};
-  const text = (value) => (value == null ? '' : String(value).trim());
-  const groups = (Array.isArray(gear.groups) ? gear.groups : [])
-    .map((group) => ({
-      title: text(group && group.title),
-      items: (Array.isArray(group && group.items) ? group.items : [])
-        .filter((item) => {
-          if (item && text(item.name)) return true;
-          console.warn(`Warning: an item in gear.yaml group "${text(group.title)}" has no name — skipping it.`);
-          return false;
-        })
-        .map((item) => ({ name: text(item.name), tag: text(item.tag), url: text(item.url), note: text(item.note) })),
-    }))
-    .filter((group) => group.items.length);
-  return { intro: text(gear.intro), groups };
+  const file = path.join(ROOT, 'gear.md');
+  const gear = { intro: '', groups: [] };
+  if (!fs.existsSync(file)) return gear;
+  let current = null;
+  let sawTitle = false;
+  fs.readFileSync(file, 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n')
+    .forEach((raw) => {
+      const line = raw.trim();
+      if (!line) return;
+      const heading = line.match(/^(#{1,3})\s+(.*)/);
+      if (heading) {
+        if (!sawTitle && heading[1] === '#') {
+          sawTitle = true;
+          return;
+        }
+        current = { title: heading[2], items: [] };
+        gear.groups.push(current);
+        return;
+      }
+      const item = line.match(/^[-*]\s+(.*)/);
+      if (item && current) current.items.push(parseGearItem(item[1]));
+      else if (!current && !gear.intro) gear.intro = line;
+    });
+  gear.groups = gear.groups.filter((group) => group.items.length);
+  return gear;
 }
 
 function copyStaticFiles(repoSlug, branch, entries) {
