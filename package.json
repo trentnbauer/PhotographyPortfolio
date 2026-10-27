@@ -7,7 +7,8 @@
     "build": "node scripts/build-gallery.js"
   },
   "dependencies": {
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "yaml": "^2.9.1"
   },
   "allowScripts": {
     "sharp@0.35.3": true
