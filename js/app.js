@@ -469,9 +469,10 @@
       const token = ++loadToken;
       const full = entry.original || entry.file;
       img.alt = entry.alt || '';
-      // Show the resized copy straight away, then swap in the untouched original once it arrives.
-      img.src = entry.file;
+      // Only ever show the untouched original: keep the spinner up until it has loaded.
+      // The resized copy is used only if the original can't be fetched at all.
       img.classList.add('is-loading');
+      img.removeAttribute('src');
       spinner.hidden = false;
       const original = new Image();
       original.onload = () => {
@@ -482,10 +483,16 @@
       };
       original.onerror = () => {
         if (token !== loadToken) return;
+        img.src = entry.file;
         img.classList.remove('is-loading');
         spinner.hidden = true;
       };
       original.src = full;
+      // Warm the cache for the neighbours so stepping through feels quick.
+      [1, -1].forEach((d) => {
+        const next = list[(index + d + list.length) % list.length];
+        if (next && next !== entry) new Image().src = next.original || next.file;
+      });
 
       const pad = (n) => String(n).padStart(2, '0');
       count.textContent = `${pad(index + 1)} / ${pad(list.length)}`;

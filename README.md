@@ -79,10 +79,11 @@ on how to add them.
 - The workflow deploys the built output directly to GitHub Pages. Nothing is
   written back to your `main` branch; resized images and the manifest are
   regenerated fresh on every push.
-- Clicking a gallery photo opens it in a viewer (arrow keys, swipe, Esc),
-  which shows the resized copy straight away and then swaps in the
-  **original, untouched file** (full resolution, no compression applied)
-  directly from the repo via `raw.githubusercontent.com`. Only the small gallery thumbnail
+- Clicking a gallery photo opens it in a viewer (arrow keys, swipe, Esc)
+  that shows only the **original, untouched file** (full resolution, no
+  compression applied), loaded directly from the repo via
+  `raw.githubusercontent.com`. The photos either side are preloaded so
+  stepping through is quick. Only the small gallery thumbnail
   is lossy-compressed — the original is never modified and isn't duplicated
   into the deployed site, so a large library of full-res scans doesn't risk
   hitting GitHub Pages' recommended ~1GB site size.
