@@ -91,15 +91,10 @@ Gallery order is upload order, newest first. Name files following the
 
 ### Committing photos instead
 
-Photos committed to `images/` (and `images/favourites/` for favourites) are
-still picked up, and are dated by when they were first committed. Moving a
-committed photo into `images/favourites/` keeps its place in the gallery.
-GitHub limits committed files to 100MB each, and large libraries make the repo
-slow to clone, which is why releases are preferred.
-
-`.github/workflows/migrate-to-releases.yml` is a one-off workflow that copies
-committed photos into the releases, in the batches they were originally
-committed in, so the gallery keeps its order.
+The build also picks up photos committed to an `images/` folder (and
+`images/favourites/` for favourites), dated by when they were first
+committed. GitHub limits committed files to 100MB each, and large libraries
+make the repo slow to clone, which is why releases are preferred.
 
 ## Filename convention
 
@@ -176,10 +171,7 @@ index.html                      Page structure
 css/style.css                   Styling, light/dark theme, photo grid
 js/app.js                       Renders Index, Favourites, Gear and the viewer
 scripts/build-gallery.js        Collects + resizes photos, writes dist/
-scripts/migrate-to-releases.js  One-off copy of images/ into the releases
-images/                         Committed photos (optional; releases preferred)
 .github/workflows/deploy.yml    Build + deploy on push, hourly and on demand
-.github/workflows/migrate-to-releases.yml  One-off copy into releases
 dist/, .cache/                  Build output and resize cache (git-ignored)
 ```
 
