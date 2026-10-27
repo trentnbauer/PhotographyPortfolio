@@ -1,8 +1,8 @@
 # Photography Portfolio
 
-A minimal, framework-free photography portfolio: a hero with your name and social
-links, a light/dark theme toggle, and a masonry gallery of your photos sorted by
-upload date. Push a full-resolution photo to `images/`, and GitHub Actions
+A minimal, framework-free photography portfolio: a contact-sheet style grid of
+your photos sorted by upload date, a Favourites page, a Gear page, a photo
+viewer and a light/dark theme toggle. Push a full-resolution photo to `images/`, and GitHub Actions
 automatically resizes it into a fast, progressive JPEG and redeploys the site —
 no manual build step, no third-party accounts, no secrets.
 
@@ -18,20 +18,34 @@ build-on-push pipeline possible for free (see [How it works](#how-it-works)).
    ```json
    {
      "photographerName": "Your Name",
+     "photographerShortName": "YN",
+     "tagline": "Hobby film photographer from Somewhere",
+     "siteUrl": "https://yourdomain.com",
      "accentColor": "oklch(0.58 0.13 35)",
-     "social": {
-       "instagram": "https://instagram.com/yourhandle",
-       "twitter": "https://x.com/yourhandle",
-       "behance": "https://behance.net/yourhandle"
-     }
+     "fonts": { "display": "Archivo", "body": "Archivo", "mono": "JetBrains Mono" },
+     "avatar": "https://gravatar.com/avatar/<hash>?s=400&d=mp",
+     "heroImages": ["2026-Spring-MinoltaSRT-KodakEktar100-R01-0012.jpg"],
+     "pages": {
+       "index": { "label": "Index", "shortLabel": "Home" },
+       "favourites": { "label": "Favourites", "shortLabel": "Favs" },
+       "gear": { "label": "Gear", "shortLabel": "Gear" }
+     },
+     "headerLinks": [
+       { "label": "Instagram", "shortLabel": "IG", "url": "https://instagram.com/yourhandle" }
+     ]
    }
    ```
-   Leave any social URL blank to hide that icon. `accentColor` accepts any
-   valid CSS color (oklch, hex, etc). If you set up a custom domain (see
-   step 5), also add `"siteUrl": "https://yourdomain.com"` — it's used to
-   build the absolute URL for the social-preview image
-   (`og:image`/`og:url`); without it, the build falls back to your
-   `github.io` URL.
+   - Every name has a long version (desktop) and a `shortLabel` of 4 characters
+     or fewer (phones). Longer short labels are cut to 4 with a console warning.
+   - `headerLinks` can hold any number of links. When the nav row gets too long,
+     Index and Favourites stay visible and the rest fold into a ☰ Menu.
+   - `heroImages` lists the photos shown on the Favourites page, by filename
+     (case and extension don't matter).
+   - `fonts` takes any Google Fonts family names; they're loaded automatically.
+   - `avatar` is optional; leave it out to hide the display picture.
+   - `accentColor` accepts any valid CSS color. `siteUrl` is used for the
+     social-preview image (`og:image`/`og:url`); without it, the build falls
+     back to your `github.io` URL.
 3. Drop your photos into `images/` (jpg, jpeg, png, webp, tiff, gif, avif —
    any resolution, GitHub's limit is 100MB per file), named following the
    [filename convention](#filename-convention) below.
@@ -46,8 +60,8 @@ npm install
 npm run build
 cd dist && python3 -m http.server 8080
 ```
-Open http://localhost:8080. With no photos yet, the page falls back to a
-placeholder gallery so you can see the layout.
+Open http://localhost:8080. With no photos yet, the page shows a short hint
+on how to add them.
 
 ## How it works
 
@@ -55,10 +69,9 @@ placeholder gallery so you can see the layout.
 - On every push, `.github/workflows/deploy.yml` runs `npm run build`
   (`scripts/build-gallery.js`), which uses [sharp](https://sharp.pixelplumb.com/)
   to resize each photo (capped at 2400px, so nobody downloads an 80MB scan to
-  view a gallery thumbnail) and re-encodes it as a **progressive JPEG** — the
-  format browsers render low-resolution-first while the rest streams in, so
-  photos appear to load fast-then-sharpen with no extra thumbnail files or
-  infrastructure needed.
+  view a gallery thumbnail) plus a 1200px copy for the grid, both as
+  **progressive JPEGs** — the format browsers render low-resolution-first
+  while the rest streams in, so photos appear to load fast-then-sharpen.
 - The build also writes `images/manifest.json` (inside the build output only,
   not committed) listing every photo, sorted newest first by the date it was
   added to the repo (from git history, falling back to the file's mtime for
@@ -66,12 +79,16 @@ placeholder gallery so you can see the layout.
 - The workflow deploys the built output directly to GitHub Pages. Nothing is
   written back to your `main` branch; resized images and the manifest are
   regenerated fresh on every push.
-- Clicking a gallery photo opens the **original, untouched file** (full
-  resolution, no compression applied) directly from the repo via
-  `raw.githubusercontent.com`, in a new tab. Only the small gallery thumbnail
+- Clicking a gallery photo opens it in a viewer (arrow keys, swipe, Esc),
+  which shows the resized copy straight away and then swaps in the
+  **original, untouched file** (full resolution, no compression applied)
+  directly from the repo via `raw.githubusercontent.com`. Only the small gallery thumbnail
   is lossy-compressed — the original is never modified and isn't duplicated
   into the deployed site, so a large library of full-res scans doesn't risk
   hitting GitHub Pages' recommended ~1GB site size.
+
+- Each visitor's browser remembers which photos it has already shown. On
+  their next visit, anything new gets an orange outline and a NEW tag.
 
 Because everything (code, config, photos) is public in this repo, there are
 no secrets or credentials to manage — the whole pipeline runs on GitHub's
@@ -100,6 +117,20 @@ history (see [How it works](#how-it-works)), since roll/frame numbers reset
 independently per camera and aren't comparable across different cameras
 used in the same season.
 
+## Gear page
+
+`gear.md` drives the Gear page. Each `## Heading` is a group and each list
+item a row; a tag in backticks (`` `Body` ``, `` `Lens` ``, `` `App` ``…) shows on
+the right, and text after ` — ` is a note. The paragraph under the top
+`# Gear` heading is the intro, and the first link in a `## Selling` section
+becomes the bar at the bottom:
+
+```md
+## Minolta
+- SRT 303 `Body`
+- [FilmCalc](https://filmcalc.app) `App` — Price of shooting film.
+```
+
 ## Custom domain + SSL
 
 In the repo's Settings → Pages, add your custom domain (e.g.
@@ -111,10 +142,11 @@ Encrypt) once DNS resolves — no extra cost or setup.
 
 ```
 index.html                Page structure
-css/style.css              Styling, light/dark theme, masonry layout
-js/app.js                  Loads config + gallery manifest, renders the page
+css/style.css              Styling, light/dark theme, photo grid
+js/app.js                  Loads config, manifest + gear.md; renders Index, Favourites and Gear
+gear.md                    Gear list shown on the Gear page
 scripts/build-gallery.js   Resizes images/ into dist/, writes dist/images/manifest.json
-config.json                 Your name, accent color, social links (committed)
+config.json                 Your name, links, fonts, avatar, favourites (committed)
 images/                     Your original photos (committed, any resolution)
 .github/workflows/deploy.yml  Builds and deploys to GitHub Pages on every push
 dist/                       Build output (git-ignored, regenerated each run)

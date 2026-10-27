@@ -1,8 +1,10 @@
 (function () {
   const root = document.documentElement;
   const THEME_KEY = 'photo-portfolio-theme';
-  const SOCIAL_LABELS = { instagram: 'IG', twitter: 'X', behance: 'Bē' };
-  const INSTAGRAM_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><circle cx="17.5" cy="6.5" r="1"></circle></svg>';
+  const SEEN_KEY = 'photo-portfolio-seen';
+  const DEFAULT_FONTS = { display: 'Archivo', body: 'Archivo', mono: 'JetBrains Mono' };
+  const VIEWS = { '': 'index', index: 'index', favourites: 'favs', gear: 'gear' };
+  const FILM_TAGS = new Set(['colour', 'color', 'b&w', 'bw', 'black & white', 'slide', 'mystery']);
 
   const bodyScrollLock = (() => {
     let count = 0;
@@ -18,21 +20,12 @@
     };
   })();
 
-  function applyTheme(theme) {
-    if (theme === 'dark') root.setAttribute('data-theme', 'dark');
-    else root.removeAttribute('data-theme');
+  function storageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
   }
 
-  function initTheme() {
-    const saved = localStorage.getItem(THEME_KEY);
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    applyTheme(saved || (prefersDark ? 'dark' : 'light'));
-
-    document.getElementById('theme-toggle').addEventListener('click', () => {
-      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      localStorage.setItem(THEME_KEY, next);
-    });
+  function storageSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* private mode etc. */ }
   }
 
   async function loadJSON(url) {
@@ -45,116 +38,400 @@
     }
   }
 
-  function escapeHtml(str) {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function renderInline(text) {
-    return escapeHtml(text)
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  }
-
-  function renderMarkdown(md) {
-    let html = '';
-    let inList = false;
-    md.split('\n').forEach((rawLine) => {
-      const line = rawLine.trim();
-      if (!line) {
-        if (inList) { html += '</ul>'; inList = false; }
-        return;
-      }
-      const heading = line.match(/^(#{1,3})\s+(.*)/);
-      if (heading) {
-        if (inList) { html += '</ul>'; inList = false; }
-        html += `<h${heading[1].length}>${renderInline(heading[2])}</h${heading[1].length}>`;
-        return;
-      }
-      const listItem = line.match(/^[-*]\s+(.*)/);
-      if (listItem) {
-        if (!inList) { html += '<ul>'; inList = true; }
-        html += `<li>${renderInline(listItem[1])}</li>`;
-        return;
-      }
-      if (inList) { html += '</ul>'; inList = false; }
-      html += `<p>${renderInline(line)}</p>`;
+  function el(tag, props, children) {
+    const node = document.createElement(tag);
+    Object.entries(props || {}).forEach(([key, value]) => {
+      if (value == null || value === false) return;
+      if (key === 'className') node.className = value;
+      else if (key === 'text') node.textContent = value;
+      else node.setAttribute(key, value);
     });
-    if (inList) html += '</ul>';
-    return html;
+    (children || []).forEach((child) => node.append(child));
+    return node;
   }
 
-  function initGearModal(gearUrl) {
-    const modal = document.getElementById('gear-modal');
-    const content = document.getElementById('gear-content');
-    let loaded = false;
+  // Short labels must fit the phone nav, so they're capped at 4 characters.
+  function shortLabel(short, long) {
+    const value = String(short || long || '').trim();
+    if (short && value.length > 4) console.warn(`[config] shortLabel "${value}" is over 4 characters; truncating`);
+    return value.slice(0, 4);
+  }
 
-    async function open() {
-      if (!modal.hidden) return;
-      modal.hidden = false;
-      bodyScrollLock.lock();
-      if (loaded) return;
-      const text = await (async () => {
-        try {
-          const res = await fetch(gearUrl || 'gear.md', { cache: 'no-store' });
-          return res.ok ? await res.text() : null;
-        } catch (e) {
-          return null;
-        }
-      })();
-      content.innerHTML = text ? renderMarkdown(text) : '<p>Could not load gear.md.</p>';
-      loaded = true;
-    }
+  // ---------- Theme ----------
 
-    function close() {
-      if (modal.hidden) return;
-      modal.hidden = true;
-      bodyScrollLock.unlock();
-    }
+  function currentTheme() {
+    return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
 
-    document.getElementById('gear-toggle').addEventListener('click', open);
-    document.getElementById('gear-close').addEventListener('click', close);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) close();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modal.hidden) close();
+  function applyTheme(theme) {
+    if (theme === 'dark') root.setAttribute('data-theme', 'dark');
+    else root.removeAttribute('data-theme');
+    const next = theme === 'dark' ? 'Light' : 'Dark';
+    document.getElementById('theme-label').textContent = next;
+    document.getElementById('theme-toggle').setAttribute('aria-label', `Switch to ${next.toLowerCase()} mode`);
+  }
+
+  function initTheme() {
+    applyTheme(currentTheme());
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const next = currentTheme() === 'dark' ? 'light' : 'dark';
+      storageSet(THEME_KEY, next);
+      const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!document.startViewTransition || reduceMotion) {
+        applyTheme(next);
+        return;
+      }
+      // Sweep the new theme across the screen as a diagonal wipe from the left.
+      const transition = document.startViewTransition(() => applyTheme(next));
+      transition.ready.then(() => {
+        root.animate(
+          { clipPath: ['polygon(0 0, 0% 0, -35% 100%, 0 100%)', 'polygon(0 0, 135% 0, 100% 100%, 0 100%)'] },
+          { duration: 750, easing: 'cubic-bezier(.7,0,.25,1)', pseudoElement: '::view-transition-new(root)' }
+        );
+      }).catch(() => {});
     });
   }
 
-  function renderHero(config) {
+  // ---------- Config ----------
+
+  function loadFonts(fonts) {
+    const families = [...new Set([fonts.display, fonts.body, fonts.mono])].filter(Boolean);
+    const params = families
+      .map((name) => 'family=' + encodeURIComponent(name).replace(/%20/g, '+') + ':wght@400;500;600;700')
+      .join('&');
+    document.getElementById('cfg-fonts').href = `https://fonts.googleapis.com/css2?${params}&display=swap`;
+    const stack = (name, fallback) => `'${String(name).replace(/'/g, '')}', ${fallback}`;
+    root.style.setProperty('--font-display', stack(fonts.display, 'sans-serif'));
+    root.style.setProperty('--font-body', stack(fonts.body, 'sans-serif'));
+    root.style.setProperty('--font-mono', stack(fonts.mono, 'monospace'));
+  }
+
+  function applyConfig(config) {
     const name = config.photographerName || 'Your Name Here';
     document.title = `${name} — Photography`;
-    document.getElementById('photographer-name').textContent = name;
 
-    const taglineEl = document.getElementById('tagline');
-    taglineEl.textContent = config.tagline || '';
-    taglineEl.hidden = !config.tagline;
+    // Break the name onto one line per word, as in the design ("Trent / Bauer").
+    const title = document.getElementById('photographer-name');
+    title.textContent = '';
+    name.split(/\s+/).forEach((word, i) => {
+      if (i) title.append(el('br'));
+      title.append(word);
+    });
 
-    root.style.setProperty('--accent', config.accentColor || 'oklch(0.58 0.13 35)');
+    document.getElementById('brand-long').textContent = name;
+    document.getElementById('brand-short').textContent = shortLabel(config.photographerShortName, name);
 
+    const tagline = document.getElementById('tagline');
+    tagline.textContent = config.tagline ? config.tagline.replace(/\.?$/, '.') : '';
+    tagline.hidden = !config.tagline;
+
+    const avatar = document.getElementById('avatar');
+    if (config.avatar) {
+      avatar.src = config.avatar;
+      avatar.alt = name;
+      avatar.hidden = false;
+    }
+
+    if (config.siteUrl) {
+      document.getElementById('footer-site').textContent = config.siteUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    }
+
+    if (config.accentColor) root.style.setProperty('--accent', config.accentColor);
+
+    const fonts = Object.assign({}, DEFAULT_FONTS, config.fonts || {});
+    if (JSON.stringify(fonts) !== JSON.stringify(DEFAULT_FONTS)) loadFonts(fonts);
+
+    const pages = config.pages || {};
+    document.getElementById('favs-title').textContent = (pages.favourites && pages.favourites.label) || 'Favourites';
+    document.getElementById('gear-title').textContent = (pages.gear && pages.gear.label) || 'Gear';
+  }
+
+  // headerLinks replaced the older `social` block; still honour `social` so old configs work.
+  function headerLinks(config) {
+    if (Array.isArray(config.headerLinks)) return config.headerLinks.filter((l) => l && l.label && l.url);
     const social = config.social || {};
-    const row = document.getElementById('social-row');
-    row.innerHTML = '';
-    Object.entries(SOCIAL_LABELS).forEach(([key, label]) => {
-      const url = social[key];
-      if (!url) return;
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.className = 'social-link';
-      a.setAttribute('aria-label', key);
-      if (key === 'instagram') a.innerHTML = INSTAGRAM_ICON;
-      else a.textContent = label;
-      row.appendChild(a);
+    const known = { instagram: ['Instagram', 'IG'], twitter: ['X', 'X'], behance: ['Behance', 'Bē'] };
+    return Object.entries(known)
+      .filter(([key]) => social[key])
+      .map(([key, [label, short]]) => ({ label, shortLabel: short, url: social[key] }));
+  }
+
+  // ---------- Nav ----------
+
+  function initNav(config) {
+    const nav = document.getElementById('site-nav');
+    const pages = config.pages || {};
+    const page = (key, view, hash, label, short) => ({
+      view,
+      hash,
+      label: (pages[key] && pages[key].label) || label,
+      short: shortLabel(pages[key] && pages[key].shortLabel, short),
+    });
+    const items = [
+      page('index', 'index', '#', 'Index', 'Home'),
+      page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'),
+      page('gear', 'gear', '#gear', 'Gear', 'Gear'),
+    ].concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url })));
+
+    const labelled = (item) => [
+      el('span', { className: 'l-long', text: item.url ? `${item.label} ↗` : item.label }),
+      el('span', { className: 'l-short', text: item.url ? `${item.short} ↗` : item.short }),
+    ];
+    const navLink = (item, className) => item.url
+      ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer' }, labelled(item))
+      : el('a', { className, href: item.hash, 'data-view': item.view }, labelled(item));
+
+    // Index and Favourites always stay visible; everything else folds into the menu when the row is too long.
+    nav.textContent = '';
+    items.forEach((item, i) => nav.append(navLink(item, i < 2 ? 'nav-item' : 'nav-item nav-extra')));
+
+    const toggle = el('button', { className: 'nav-item menu-toggle', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true' }, [
+      el('span', { className: 'burger', 'aria-hidden': 'true' }, [el('span'), el('span'), el('span')]),
+      el('span', { className: 'menu-label', text: 'Menu' }),
+    ]);
+    const panel = el('span', { className: 'menu-panel', hidden: 'hidden' });
+    items.slice(2).forEach((item) => {
+      panel.append(item.url
+        ? el('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer', text: `${item.label} ↗` })
+        : el('a', { href: item.hash, 'data-view': item.view }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
+    });
+    nav.append(el('span', { className: 'nav-menu' }, [toggle, panel]));
+
+    function setMenu(open) {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.querySelector('.menu-label').textContent = open ? 'Close' : 'Menu';
+    }
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMenu(panel.hidden);
+    });
+    panel.addEventListener('click', () => setMenu(false));
+    document.addEventListener('click', (e) => {
+      if (!panel.hidden && !panel.contains(e.target)) setMenu(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !panel.hidden) setMenu(false);
+    });
+
+    function layout() {
+      if (nav.offsetParent === null) return;
+      nav.classList.remove('is-collapsed');
+      nav.classList.add('is-measuring');
+      const overflowing = nav.scrollWidth > nav.clientWidth + 1;
+      nav.classList.remove('is-measuring');
+      nav.classList.toggle('is-collapsed', overflowing);
+      if (!overflowing) setMenu(false);
+    }
+    let resizeFrame = 0;
+    window.addEventListener('resize', () => {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(layout);
+    });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+    return layout;
+  }
+
+  // ---------- Views ----------
+
+  function initRouting(onShow) {
+    const sections = { index: 'view-index', favs: 'view-favs', gear: 'view-gear' };
+    let current = null;
+    function show() {
+      const view = VIEWS[location.hash.replace(/^#/, '')] || 'index';
+      if (view === current) return;
+      const first = current === null;
+      current = view;
+      document.body.dataset.view = view;
+      Object.entries(sections).forEach(([key, id]) => { document.getElementById(id).hidden = key !== view; });
+      document.querySelectorAll('[data-view]').forEach((link) => {
+        if (link.dataset.view === view) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+      });
+      if (!first) window.scrollTo(0, 0);
+      onShow(view);
+    }
+    window.addEventListener('hashchange', show);
+    show();
+  }
+
+  // ---------- Gallery ----------
+
+  // The browser remembers which photos it has already shown; anything not in that list is new.
+  // A first-time visitor has no list yet, so nothing is marked new for them.
+  function newPhotoChecker(manifest) {
+    let seen = null;
+    try {
+      const raw = storageGet(SEEN_KEY);
+      seen = raw ? new Set(JSON.parse(raw)) : null;
+    } catch (e) {
+      seen = null;
+    }
+    storageSet(SEEN_KEY, JSON.stringify(manifest.map((entry) => entry.name || entry.file)));
+    return (entry) => !!seen && !seen.has(entry.name || entry.file);
+  }
+
+  function renderGrid(container, entries, { isNew, onOpen }) {
+    container.textContent = '';
+    entries.forEach((entry, i) => {
+      const ar = entry.width && entry.height ? entry.width / entry.height : 1.5;
+      const img = el('img', {
+        src: entry.thumb || entry.file,
+        srcset: entry.thumb ? `${entry.thumb} 1200w, ${entry.file} 2400w` : null,
+        sizes: entry.thumb ? '(max-width: 640px) 100vw, 50vw' : null,
+        alt: entry.alt || '',
+        loading: 'lazy',
+        decoding: 'async',
+        width: entry.width,
+        height: entry.height,
+      });
+      const fresh = isNew && isNew(entry);
+      const inner = el('span', { className: 'tile-inner' }, [img]);
+      if (fresh) inner.append(el('span', { className: 'new-badge', text: 'NEW' }));
+      const tile = el('a', { className: fresh ? 'tile is-new' : 'tile', href: entry.original || entry.file }, [inner]);
+      tile.style.setProperty('--ar', ar.toFixed(4));
+      tile.addEventListener('click', (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        onOpen(entries, i);
+      });
+      container.append(tile);
     });
   }
+
+  function normaliseName(name) {
+    return String(name).trim().toLowerCase().replace(/\.(jpe?g|png|webp|tiff?|gif|avif)$/, '');
+  }
+
+  // config.heroImages lists favourite filenames; matching ignores case and extension
+  // (images/ has both .jpg and .JPG), falling back to a partial match.
+  function pickFavourites(config, manifest) {
+    const wanted = config.heroImages || config.favourites || [];
+    const byName = new Map(manifest.map((entry) => [normaliseName(entry.name || ''), entry]));
+    return wanted
+      .map((name) => {
+        const key = normaliseName(name);
+        return byName.get(key) || manifest.find((entry) => normaliseName(entry.name || '').includes(key));
+      })
+      .filter(Boolean);
+  }
+
+  // ---------- Gear ----------
+
+  function parseGearItem(text) {
+    let name = text;
+    let href = '';
+    let rest = '';
+    const link = text.match(/^\[(.+?)\]\((.+?)\)\s*(.*)$/);
+    if (link) {
+      [, name, href, rest] = link;
+    } else {
+      const split = text.match(/^(.*?)\s*((?:`[^`]+`|—\s).*)?$/);
+      name = split[1];
+      rest = split[2] || '';
+    }
+    let tag = '';
+    const tagMatch = rest.match(/^`([^`]+)`\s*/);
+    if (tagMatch) {
+      tag = tagMatch[1];
+      rest = rest.slice(tagMatch[0].length);
+    }
+    let note = rest.replace(/^—\s*/, '').trim();
+    // Older gear.md wrote link notes in brackets: "[FilmCalc](url) (Calculates ...)".
+    const bracketed = note.match(/^\((.*)\)$/);
+    if (bracketed) note = bracketed[1].replace(/^./, (c) => c.toUpperCase());
+    return { name: name.trim(), href, tag, note };
+  }
+
+  function parseGear(md) {
+    const result = { intro: '', groups: [], selling: null };
+    let current = null;
+    let sawTitle = false;
+    let selling = false;
+    md.replace(/<!--[\s\S]*?-->/g, '').split('\n').forEach((raw) => {
+      const line = raw.trim();
+      if (!line) return;
+      const heading = line.match(/^(#{1,3})\s+(.*)/);
+      if (heading) {
+        if (!sawTitle && heading[1] === '#') {
+          sawTitle = true;
+          return;
+        }
+        selling = /^selling$/i.test(heading[2]);
+        current = selling ? null : { title: heading[2], items: [] };
+        if (current) result.groups.push(current);
+        return;
+      }
+      const item = line.match(/^[-*]\s+(.*)/);
+      if (selling) {
+        const link = line.match(/\[(.+?)\]\((.+?)\)/);
+        if (link && !result.selling) result.selling = { label: link[1], url: link[2] };
+      } else if (item && current) {
+        current.items.push(parseGearItem(item[1]));
+      } else if (!current && !result.intro) {
+        result.intro = line;
+      }
+    });
+    result.groups = result.groups.filter((group) => group.items.length);
+    return result;
+  }
+
+  function gearCount(items) {
+    const tags = items.map((item) => item.tag.toLowerCase());
+    let unit = ['piece', 'pieces'];
+    if (tags.every((tag) => tag === 'app')) unit = ['app', 'apps'];
+    else if (tags.every((tag) => FILM_TAGS.has(tag))) unit = ['stock', 'stocks'];
+    return `${items.length} ${unit[items.length === 1 ? 0 : 1]}`;
+  }
+
+  async function loadGear(gearUrl) {
+    let text = null;
+    for (const url of [gearUrl, 'gear.md'].filter(Boolean)) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok) { text = await res.text(); break; }
+      } catch (e) { /* try the next source */ }
+    }
+    const groupsEl = document.getElementById('gear-groups');
+    if (!text) {
+      groupsEl.textContent = 'Could not load gear.md.';
+      return;
+    }
+    const gear = parseGear(text);
+
+    const intro = document.getElementById('gear-intro');
+    intro.textContent = gear.intro;
+    intro.hidden = !gear.intro;
+
+    groupsEl.textContent = '';
+    gear.groups.forEach((group) => {
+      const items = group.items.map((item) => el('div', { className: 'gear-item' }, [
+        el('div', { className: 'gear-text' }, [
+          item.href
+            ? el('a', { className: 'gear-name', href: item.href, target: '_blank', rel: 'noopener noreferrer', text: `${item.name} ↗` })
+            : el('span', { className: 'gear-name', text: item.name }),
+          item.note ? el('span', { className: 'gear-note', text: item.note }) : '',
+        ]),
+        el('span', { className: 'gear-tag', text: item.tag }),
+      ]));
+      groupsEl.append(el('div', { className: 'gear-group' }, [
+        el('div', { className: 'gear-label' }, [
+          el('span', { className: 'gear-title', text: `▶ ${group.title}` }),
+          el('span', { className: 'gear-count', text: gearCount(group.items) }),
+        ]),
+        el('div', { className: 'gear-items' }, items),
+      ]));
+    });
+
+    const sellingEl = document.getElementById('gear-selling');
+    if (gear.selling) {
+      sellingEl.href = gear.selling.url;
+      document.getElementById('gear-selling-label').textContent = gear.selling.label;
+      sellingEl.hidden = false;
+    }
+  }
+
+  // ---------- Lightbox ----------
 
   function resetViewportZoom() {
     const viewport = document.querySelector('meta[name="viewport"]');
@@ -164,55 +441,69 @@
     setTimeout(() => viewport.setAttribute('content', original), 350);
   }
 
-  function initLightbox(manifest) {
+  function initLightbox() {
     const lightbox = document.getElementById('lightbox');
-    const lightboxImg = document.getElementById('lightbox-img');
-    const spinner = document.getElementById('lightbox-spinner');
-    const caption = document.getElementById('lightbox-caption');
+    const img = document.getElementById('lb-img');
+    const spinner = document.getElementById('lb-spinner');
+    const count = document.getElementById('lb-count');
+    const caption = document.getElementById('lb-caption');
+    const hint = document.getElementById('lb-hint');
+    let list = [];
+    let index = 0;
     let loadToken = 0;
     let historyPushed = false;
-    let currentIndex = -1;
 
-    function open(entry) {
-      currentIndex = manifest.indexOf(entry);
+    function show() {
+      const entry = list[index];
       const token = ++loadToken;
-      const src = entry.original || entry.file;
-      lightboxImg.alt = entry.alt || '';
+      const full = entry.original || entry.file;
+      img.alt = entry.alt || '';
+      // Show the resized copy straight away, then swap in the untouched original once it arrives.
+      img.src = entry.file;
+      img.classList.add('is-loading');
+      spinner.hidden = false;
+      const original = new Image();
+      original.onload = () => {
+        if (token !== loadToken) return;
+        img.src = full;
+        img.classList.remove('is-loading');
+        spinner.hidden = true;
+      };
+      original.onerror = () => {
+        if (token !== loadToken) return;
+        img.classList.remove('is-loading');
+        spinner.hidden = true;
+      };
+      original.src = full;
+
+      const pad = (n) => String(n).padStart(2, '0');
+      count.textContent = `${pad(index + 1)} / ${pad(list.length)}`;
+      const cap = [entry.camera, entry.film].filter(Boolean).join(' · ');
+      caption.textContent = cap;
+      if (entry.frame) caption.append(el('span', { className: 'l-short', text: `${cap ? ' · ' : ''}${entry.frame}` }));
+      hint.textContent = `${entry.frame ? `Frame ${entry.frame} · ` : ''}← → Esc`;
+    }
+
+    function open(entries, i) {
+      list = entries;
+      index = i;
       if (lightbox.hidden) {
         lightbox.hidden = false;
         bodyScrollLock.lock();
       }
-
       if (!historyPushed) {
         history.pushState({ lightboxOpen: true }, '');
         historyPushed = true;
       }
-
-      if (entry.file) {
-        lightboxImg.src = entry.file;
-        lightboxImg.classList.add('is-loading');
-        spinner.hidden = false;
-      }
-
-      const captionText = [entry.camera, entry.film].filter(Boolean).join(' · ');
-      caption.textContent = captionText;
-      caption.hidden = !captionText;
-
-      const full = new Image();
-      full.onload = () => {
-        if (token !== loadToken) return;
-        lightboxImg.src = src;
-        lightboxImg.classList.remove('is-loading');
-        spinner.hidden = true;
-      };
-      full.src = src;
+      show();
+      document.getElementById('lb-close').focus({ preventScroll: true });
     }
 
-    // Wraps at either end of the gallery rather than clamping.
-    function showRelative(delta) {
-      if (lightbox.hidden || !manifest.length) return;
-      const next = (currentIndex + delta + manifest.length) % manifest.length;
-      open(manifest[next]);
+    // Wraps at either end rather than clamping.
+    function step(delta) {
+      if (lightbox.hidden || !list.length) return;
+      index = (index + delta + list.length) % list.length;
+      show();
     }
 
     function close({ fromPopstate } = {}) {
@@ -220,11 +511,9 @@
       loadToken++;
       lightbox.hidden = true;
       bodyScrollLock.unlock();
-      lightboxImg.src = '';
-      lightboxImg.classList.remove('is-loading');
+      img.removeAttribute('src');
       spinner.hidden = true;
       resetViewportZoom();
-
       if (historyPushed) {
         historyPushed = false;
         // Closed via button/backdrop/Escape rather than the Back button itself —
@@ -233,71 +522,62 @@
       }
     }
 
-    document.getElementById('lightbox-close').addEventListener('click', () => close());
+    document.getElementById('lb-close').addEventListener('click', () => close());
+    lightbox.querySelectorAll('.lb-arrow').forEach((button) => {
+      button.addEventListener('click', () => step(Number(button.dataset.step)));
+    });
+    // Clicking the empty area around the photo closes the viewer.
     lightbox.addEventListener('click', (e) => {
-      if (e.target === lightbox) close();
+      if (e.target === lightbox || e.target.classList.contains('lb-stage') || e.target.classList.contains('lb-frame')) close();
     });
     document.addEventListener('keydown', (e) => {
       if (lightbox.hidden) return;
       if (e.key === 'Escape') close();
-      else if (e.key === 'ArrowRight') showRelative(1);
-      else if (e.key === 'ArrowLeft') showRelative(-1);
+      else if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
     });
     window.addEventListener('popstate', () => close({ fromPopstate: true }));
+
+    let touchX = null;
+    let touchY = null;
+    lightbox.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { touchX = null; return; }
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
+    }, { passive: true });
+    lightbox.addEventListener('touchend', (e) => {
+      if (touchX === null || !e.changedTouches.length) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      const dy = e.changedTouches[0].clientY - touchY;
+      touchX = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+    });
 
     return open;
   }
 
-  function renderGallery(manifest, openLightbox) {
-    const gallery = document.getElementById('gallery');
-    const hint = document.getElementById('empty-hint');
-    gallery.innerHTML = '';
-
-    if (manifest && manifest.length) {
-      hint.hidden = true;
-      manifest.forEach((entry) => {
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'photo-item';
-        item.title = 'View full-size photo';
-
-        const img = document.createElement('img');
-        img.src = entry.file;
-        img.loading = 'lazy';
-        img.alt = entry.alt || '';
-        if (entry.width && entry.height) {
-          img.width = entry.width;
-          img.height = entry.height;
-        }
-        item.appendChild(img);
-        item.addEventListener('click', () => openLightbox(entry));
-        gallery.appendChild(item);
-      });
-      return;
-    }
-
-    hint.hidden = false;
-    const heights = [360, 260, 420, 300, 340, 460, 280, 400, 320, 380, 300, 440];
-    heights.forEach((h, i) => {
-      const item = document.createElement('div');
-      item.className = 'placeholder-item';
-      item.style.height = `${h}px`;
-      const label = document.createElement('div');
-      label.className = 'placeholder-label';
-      label.textContent = `image ${String(i + 1).padStart(2, '0')}`;
-      item.appendChild(label);
-      gallery.appendChild(item);
-    });
-  }
+  // ---------- Boot ----------
 
   async function init() {
     initTheme();
     const config = (await loadJSON('config.json')) || {};
-    initGearModal(config.gearUrl);
-    renderHero(config);
-    const manifest = await loadJSON('images/manifest.json');
-    const openLightbox = initLightbox(manifest || []);
-    renderGallery(manifest, openLightbox);
+    applyConfig(config);
+    const layoutNav = initNav(config);
+    const openLightbox = initLightbox();
+
+    let gearLoaded = false;
+    initRouting((view) => {
+      if (view === 'index') layoutNav();
+      if (view === 'gear' && !gearLoaded) {
+        gearLoaded = true;
+        loadGear(config.gearUrl);
+      }
+    });
+
+    const manifest = (await loadJSON('images/manifest.json')) || [];
+    document.getElementById('empty-hint').hidden = manifest.length > 0;
+    renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
+    renderGrid(document.getElementById('favs-gallery'), pickFavourites(config, manifest), { onOpen: openLightbox });
   }
 
   init();
