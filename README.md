@@ -41,7 +41,7 @@ the file itself. In short:
 | `accentColor` | Any CSS colour (oklch, hex…). |
 | `fonts` | `display`, `body` and `mono` — any Google Fonts family names; loaded automatically. |
 | `avatar` | Display picture next to your name. Leave it out to hide it. |
-| `pages` | Labels for the Index and Gear pages. |
+| `pages` | Labels for the Index and Gear pages. (Favourites and Gear only appear when they have something to show.) |
 | `headerLinks` | Extra links in the nav (Instagram, eBay…), as many as you like. |
 
 Every page and link has a `label` (desktop) and a `shortLabel` of 4 characters
@@ -117,18 +117,27 @@ show no caption (the build logs a warning so typos are easy to spot).
 
 ## Gear page
 
-[`gear.md`](gear.md) drives the Gear page. The paragraph under the top
-`# Gear` heading is the intro; each `## Heading` is a group and each list item
-a row. A tag in backticks (`` `Body` ``, `` `Lens` ``, `` `App` ``…) shows on
-the right, and text after ` — ` is a note:
+[`gear.yaml`](gear.yaml) drives the Gear page: an optional `intro` line and a
+list of `groups`, each with a `title` and `items`. Each item has a `name`, and
+optionally a `tag` (shown on the right: `Body`, `Lens`, `App`…), a `url`
+(makes the name a link) and a `note` (smaller text underneath):
 
-```md
-## Minolta
-- SRT 303 `Body`
-- [FilmCalc](https://filmcalc.app) `App` — Price of shooting film.
+```yaml
+intro: Old Minoltas, a Leica and a couple of Soviet bodies.
+groups:
+  - title: Minolta
+    items:
+      - { name: SRT 303, tag: Body }
+  - title: Tools
+    items:
+      - name: FilmCalc
+        tag: App
+        url: https://filmcalc.app
+        note: Price of shooting film.
 ```
 
-The page reads `gear.md` live from GitHub, so edits show up without a rebuild.
+If `gear.yaml` is missing or has no items, the Gear page and its nav link are
+hidden. Edits go live with the next build (pushing the change triggers one).
 
 ## How it works
 
@@ -141,8 +150,8 @@ The page reads `gear.md` live from GitHub, so edits show up without a rebuild.
     `.cache/` between runs so each photo is only downloaded and resized once;
   - writes `images/manifest.json` (build output only) listing every photo,
     newest first;
-  - turns `config.yaml` into `config.json` for the page and bakes link-preview
-    tags into `index.html`.
+  - turns `config.yaml` and `gear.yaml` into `config.json` and `gear.json`
+    for the page, and bakes link-preview tags into `index.html`.
 - **Deploy:** the built `dist/` folder goes straight to GitHub Pages; nothing
   is written back to the repo.
 - **Photo viewer:** clicking a photo opens the **original, untouched file**,
@@ -167,7 +176,7 @@ resolves. Set `siteUrl` in `config.yaml` to match.
 
 ```
 config.yaml                     Site settings (name, links, fonts, avatar…)
-gear.md                         Gear list shown on the Gear page
+gear.yaml                       Gear list shown on the Gear page
 index.html                      Page structure
 css/style.css                   Styling, light/dark theme, photo grid
 js/app.js                       Renders Index, Favourites, Gear and the viewer

@@ -75,17 +75,34 @@ function buildOgMeta(config, entries, siteUrl) {
   return tags.join('\n');
 }
 
+// gear.yaml → the Gear page's data (dist/gear.json). Empty groups and items
+// without a name are dropped; with no groups left the page is hidden.
+function loadGear() {
+  const file = path.join(ROOT, 'gear.yaml');
+  if (!fs.existsSync(file)) return { intro: '', groups: [] };
+  const gear = YAML.parse(fs.readFileSync(file, 'utf8')) || {};
+  const text = (value) => (value == null ? '' : String(value).trim());
+  const groups = (Array.isArray(gear.groups) ? gear.groups : [])
+    .map((group) => ({
+      title: text(group && group.title),
+      items: (Array.isArray(group && group.items) ? group.items : [])
+        .filter((item) => {
+          if (item && text(item.name)) return true;
+          console.warn(`Warning: an item in gear.yaml group "${text(group.title)}" has no name — skipping it.`);
+          return false;
+        })
+        .map((item) => ({ name: text(item.name), tag: text(item.tag), url: text(item.url), note: text(item.note) })),
+    }))
+    .filter((group) => group.items.length);
+  return { intro: text(gear.intro), groups };
+}
+
 function copyStaticFiles(repoSlug, branch, entries) {
   fs.mkdirSync(DIST_DIR, { recursive: true });
 
   // config.yaml is the source of truth; the page reads it as dist/config.json.
   const config = YAML.parse(fs.readFileSync(path.join(ROOT, 'config.yaml'), 'utf8')) || {};
-  // Fetched live from GitHub's raw content at runtime so gear.md edits show up
-  // without needing a full rebuild — falls back to the bundled copy when
-  // there's no known repo (e.g. a local checkout with no git remote).
-  config.gearUrl = repoSlug
-    ? `https://raw.githubusercontent.com/${repoSlug}/${branch}/gear.md`
-    : 'gear.md';
+  fs.writeFileSync(path.join(DIST_DIR, 'gear.json'), JSON.stringify(loadGear(), null, 2) + '\n');
   fs.writeFileSync(path.join(DIST_DIR, 'config.json'), JSON.stringify(config, null, 2) + '\n');
 
   const siteUrl = getSiteUrl(config, repoSlug);
@@ -93,8 +110,6 @@ function copyStaticFiles(repoSlug, branch, entries) {
     .readFileSync(path.join(ROOT, 'index.html'), 'utf8')
     .replace('<!--OG_META-->', buildOgMeta(config, entries, siteUrl));
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), indexHtml);
-
-  fs.cpSync(path.join(ROOT, 'gear.md'), path.join(DIST_DIR, 'gear.md'));
 
   for (const dir of ['css', 'js']) {
     fs.cpSync(path.join(ROOT, dir), path.join(DIST_DIR, dir), { recursive: true });
