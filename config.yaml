@@ -20,7 +20,7 @@ fonts:
 
 # Display picture next to your name, also used as the browser-tab icon.
 # Remove the line to hide it (the tab then shows a 📷 camera emoji).
-avatar: https://gravatar.com/avatar/322525ee3f5388602299881837c83382a0417d3c177e2ddc93ef37c13b668fac?s=400&d=mp
+avatar: https://raw.githubusercontent.com/trentnbauer/PhotographyPortfolio/bb9f80a3373f516c24b7e3fd2ef58edbd0f9ae1b/dp.jpg
 
 # The home page's nav label. "hover" (optional) is the tooltip shown when the
 # mouse rests on a nav item. Favourites and Gear aren't listed: they appear
