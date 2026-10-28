@@ -19,7 +19,7 @@ fonts:
   mono: JetBrains Mono    # small uppercase labels, nav, captions
 
 # Display picture next to your name, also used as the browser-tab icon.
-# Remove the line to hide it.
+# Remove the line to hide it (the tab then shows a 📷 camera emoji).
 avatar: https://gravatar.com/avatar/322525ee3f5388602299881837c83382a0417d3c177e2ddc93ef37c13b668fac?s=400&d=mp
 
 # The home page's nav label. "hover" (optional) is the tooltip shown when the
