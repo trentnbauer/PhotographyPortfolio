@@ -180,7 +180,13 @@ function copyStaticFiles(repoSlug, branch, entries) {
   const siteUrl = getSiteUrl(config, repoSlug);
   const indexHtml = fs
     .readFileSync(path.join(ROOT, 'index.html'), 'utf8')
-    .replace('<!--OG_META-->', [buildOgMeta(config, entries, siteUrl), buildIconTags(config)].filter(Boolean).join('\n'));
+    .replace('<!--OG_META-->', [buildOgMeta(config, entries, siteUrl), buildIconTags(config)].filter(Boolean).join('\n'))
+    // GitHub Pages lets browsers reuse files for 10 minutes, so tag the stylesheet and script
+    // with a hash of their contents: a changed file gets a new URL and is fetched straight away.
+    .replace(/(href|src)="((?:css|js)\/[^"?]+)"/g, (match, attr, file) => {
+      const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex').slice(0, 10);
+      return `${attr}="${file}?v=${hash}"`;
+    });
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), indexHtml);
 
   for (const dir of ['css', 'js']) {
