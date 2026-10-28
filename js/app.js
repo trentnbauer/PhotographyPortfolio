@@ -130,6 +130,7 @@
     if (config.avatar) {
       avatar.src = config.avatar;
       avatar.alt = name;
+      avatar.classList.toggle('is-square', String(config.avatarShape).toLowerCase() === 'square');
       avatar.hidden = false;
     }
 

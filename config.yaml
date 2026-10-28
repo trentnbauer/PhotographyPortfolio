@@ -21,6 +21,8 @@ fonts:
 # Display picture next to your name, also used as the browser-tab icon.
 # Remove the line to hide it (the tab then shows a 📷 camera emoji).
 avatar: https://raw.githubusercontent.com/trentnbauer/PhotographyPortfolio/bb9f80a3373f516c24b7e3fd2ef58edbd0f9ae1b/dp.jpg
+# Shape of the display picture next to your name: circle or square.
+avatarShape: circle
 
 # The home page's nav label. "hover" (optional) is the tooltip shown when the
 # mouse rests on a nav item. Favourites and Gear aren't listed: they appear

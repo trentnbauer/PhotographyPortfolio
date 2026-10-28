@@ -129,6 +129,7 @@ body[data-view="index"] .brand { visibility: hidden; }
   flex: none;
   background: var(--img-bg);
 }
+.avatar.is-square { border-radius: 0; }
 
 .display-title {
   margin: 0;
