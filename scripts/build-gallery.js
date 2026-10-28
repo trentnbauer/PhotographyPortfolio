@@ -101,14 +101,38 @@ function parseGearItem(text) {
   return { name: name.trim(), tag, url, note: rest.replace(/^—\s*/, '').trim() };
 }
 
+// Drops <!-- ... --> comments. Uses plain string search and repeats until none
+// are left, so pieces either side of a removed comment can't join up into a
+// new "<!--". An unclosed comment drops everything after it.
+function stripHtmlComments(text) {
+  let previous;
+  do {
+    previous = text;
+    let out = '';
+    let pos = 0;
+    for (;;) {
+      const start = text.indexOf('<!--', pos);
+      if (start === -1) {
+        out += text.slice(pos);
+        break;
+      }
+      out += text.slice(pos, start);
+      const end = text.indexOf('-->', start + 4);
+      if (end === -1) break;
+      pos = end + 3;
+    }
+    text = out;
+  } while (text !== previous);
+  return text;
+}
+
 function loadGear() {
   const file = path.join(ROOT, 'gear.md');
   const gear = { intro: '', groups: [] };
   if (!fs.existsSync(file)) return gear;
   let current = null;
   let sawTitle = false;
-  fs.readFileSync(file, 'utf8')
-    .replace(/<!--[\s\S]*?-->/g, '')
+  stripHtmlComments(fs.readFileSync(file, 'utf8'))
     .split('\n')
     .forEach((raw) => {
       const line = raw.trim();
