@@ -24,7 +24,7 @@ avatar: https://raw.githubusercontent.com/trentnbauer/PhotographyPortfolio/bb9f8
 avatarShape: circle
 # Browser-tab icon: avatar (your display picture) or camera (a 📷 emoji).
 # Without a display picture it's always the camera.
-favicon: avatar
+favicon: camera
 
 # The home page's nav label. "hover" (optional) is the tooltip shown when the
 # mouse rests on a nav item. Favourites and Gear aren't listed: they appear
