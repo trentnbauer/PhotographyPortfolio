@@ -427,9 +427,11 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   align-items: center;
   justify-content: center;
 }
+/* One-finger scrolling stays native; pinches are handled by the viewer, not page zoom. */
+.lightbox { touch-action: pan-x pan-y; }
 .lb-img.can-zoom { cursor: zoom-in; }
 
-/* Zoomed: the photo shows at its full pixel size and the frame scrolls to pan.
+/* Zoomed: the photo shows at the zoom level's size (set inline) and the frame scrolls to pan.
    margin:auto keeps it centred when it's smaller than the frame in one direction. */
 .lightbox.is-zoomed .lb-frame {
   display: flex;
