@@ -161,7 +161,9 @@ body[data-view="index"] .brand { visibility: hidden; }
   letter-spacing: .1em;
   text-transform: uppercase;
 }
-.site-nav.is-measuring { flex-wrap: nowrap; }
+/* While measuring, line items up from the left so any overflow is counted (centred rows
+   overflow to both sides, and the left side doesn't show up in scrollWidth). */
+.site-nav.is-measuring { flex-wrap: nowrap; justify-content: flex-start; }
 
 .nav-item {
   font: inherit;
@@ -181,6 +183,10 @@ body[data-view="index"] .brand { visibility: hidden; }
 .nav-menu { position: relative; display: none; }
 .site-nav.is-collapsed .nav-menu { display: flex; }
 .site-nav.is-collapsed .nav-extra { display: none; }
+/* Very small screens: only Home stays in the row; the other pages join the menu. */
+.site-nav.is-compact .nav-page { display: none; }
+.menu-panel .menu-page { display: none; }
+.site-nav.is-compact .menu-panel .menu-page { display: flex; }
 
 .menu-toggle { display: flex; align-items: center; gap: 10px; }
 .burger { display: flex; flex-direction: column; gap: 3px; width: 16px; }
@@ -190,7 +196,7 @@ body[data-view="index"] .brand { visibility: hidden; }
   position: absolute;
   top: 100%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + var(--nudge, 0px)));
   margin-top: 14px;
   z-index: 20;
   min-width: 220px;
@@ -560,7 +566,7 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   .site-nav { gap: 0; padding: 4px 20px 0; font-size: 11px; }
   .site-nav .nav-item { height: 44px; padding: 0 14px; border-bottom: 0; display: flex; align-items: center; }
   .site-nav .nav-item[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
-  .menu-panel { margin-top: 4px; left: auto; right: 0; transform: none; }
+  .menu-panel { margin-top: 4px; left: auto; right: 0; transform: translateX(var(--nudge, 0px)); }
 
   #gallery { margin: 24px 12px 24px; }
   .grid { gap: 8px; }

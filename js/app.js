@@ -185,20 +185,22 @@
       ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover }, labelled(item))
       : el('a', { className, href: item.hash, 'data-view': item.view, title: item.hover }, labelled(item));
 
-    // The pages always stay visible; the outside links fold into the menu on phones, and on
-    // wider screens when the row is too long.
+    // The pages stay visible; the outside links fold into the menu on phones, and on wider
+    // screens when the row is too long. On very small screens where even the pages don't fit,
+    // everything but Home goes in the menu.
     nav.textContent = '';
-    items.forEach((item, i) => nav.append(navLink(item, i < primary.length ? 'nav-item' : 'nav-item nav-extra')));
+    const navClass = (i) => (i === 0 ? 'nav-item' : i < primary.length ? 'nav-item nav-page' : 'nav-item nav-extra');
+    items.forEach((item, i) => nav.append(navLink(item, navClass(i))));
 
     const toggle = el('button', { className: 'nav-item menu-toggle', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true' }, [
       el('span', { className: 'burger', 'aria-hidden': 'true' }, [el('span'), el('span'), el('span')]),
       el('span', { className: 'menu-label', text: 'Menu' }),
     ]);
     const panel = el('span', { className: 'menu-panel', hidden: 'hidden' });
-    items.slice(primary.length).forEach((item) => {
+    items.slice(1).forEach((item, i) => {
       panel.append(item.url
         ? el('a', { href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover, text: `${item.label} ↗` })
-        : el('a', { href: item.hash, 'data-view': item.view, title: item.hover }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
+        : el('a', { className: i + 1 < primary.length ? 'menu-page' : null, href: item.hash, 'data-view': item.view, title: item.hover }, [el('span', { text: item.label }), el('span', { className: 'dot', text: '●', 'aria-hidden': 'true' })]));
     });
     nav.append(el('span', { className: 'nav-menu' }, [toggle, panel]));
 
@@ -206,6 +208,14 @@
       panel.hidden = !open;
       toggle.setAttribute('aria-expanded', String(open));
       toggle.querySelector('.menu-label').textContent = open ? 'Close' : 'Menu';
+      if (!open) return;
+      // Nudge the panel back on screen if it would hang off either edge (tiny screens).
+      panel.style.setProperty('--nudge', '0px');
+      const edge = 8;
+      const box = panel.getBoundingClientRect();
+      const viewport = document.documentElement.clientWidth;
+      if (box.left < edge) panel.style.setProperty('--nudge', `${edge - box.left}px`);
+      else if (box.right > viewport - edge) panel.style.setProperty('--nudge', `${viewport - edge - box.right}px`);
     }
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -221,15 +231,26 @@
 
     const phone = window.matchMedia('(max-width: 640px)');
     const hasExtras = items.length > primary.length;
+    // Lay the visible items out in one unwrapped row and compare their span with the room
+    // inside the nav's padding.
+    const overflows = () => {
+      nav.classList.add('is-measuring');
+      const shown = [...nav.querySelectorAll(':scope > .nav-item, .menu-toggle')].filter((node) => node.offsetParent !== null);
+      const style = getComputedStyle(nav);
+      const room = nav.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const span = shown.length ? shown[shown.length - 1].getBoundingClientRect().right - shown[0].getBoundingClientRect().left : 0;
+      nav.classList.remove('is-measuring');
+      return span > room + 1;
+    };
     function layout() {
       if (nav.offsetParent === null) return;
-      nav.classList.remove('is-collapsed');
-      nav.classList.add('is-measuring');
-      const overflowing = nav.scrollWidth > nav.clientWidth + 1;
-      nav.classList.remove('is-measuring');
-      const collapse = hasExtras && (phone.matches || overflowing);
+      nav.classList.remove('is-collapsed', 'is-compact');
+      const collapse = hasExtras && (phone.matches || overflows());
       nav.classList.toggle('is-collapsed', collapse);
-      if (!collapse) setMenu(false);
+      // Still too wide: fold the other pages into the menu as well.
+      const compact = primary.length > 1 && overflows();
+      if (compact) nav.classList.add('is-collapsed', 'is-compact');
+      if (!collapse && !compact) setMenu(false);
     }
     let resizeFrame = 0;
     window.addEventListener('resize', () => {
