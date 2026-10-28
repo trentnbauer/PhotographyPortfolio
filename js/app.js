@@ -379,27 +379,60 @@
     let loadToken = 0;
     let historyPushed = false;
     let zoomed = false;
+    let scale = 1;
 
     // Clicking the loaded original shows it at 100% (one image pixel per CSS pixel), keeping
     // the clicked point under the pointer; the frame then scrolls to pan. Clicking again fits it.
+    // Pinching (or a trackpad pinch) sets any zoom between fitting the screen and 100%.
     function canZoom() {
       if (img.classList.contains('is-loading') || !img.naturalWidth) return false;
       return img.naturalWidth > img.clientWidth + 1 || img.naturalHeight > img.clientHeight + 1;
     }
 
-    function setZoom(on, clientX, clientY) {
-      if (on === zoomed || (on && !canZoom())) return;
-      const rect = img.getBoundingClientRect();
-      const fx = clientX === undefined ? 0.5 : (clientX - rect.left) / rect.width;
-      const fy = clientY === undefined ? 0.5 : (clientY - rect.top) / rect.height;
-      zoomed = on;
-      lightbox.classList.toggle('is-zoomed', on);
-      if (!on) return;
+    // The scale at which the whole photo fits the frame.
+    function fitScale() {
       const box = frame.getBoundingClientRect();
-      const px = clientX === undefined ? box.width / 2 : clientX - box.left;
-      const py = clientY === undefined ? box.height / 2 : clientY - box.top;
-      frame.scrollLeft = fx * img.naturalWidth - px;
-      frame.scrollTop = fy * img.naturalHeight - py;
+      return Math.min(box.width / img.naturalWidth, box.height / img.naturalHeight, 1);
+    }
+
+    function unzoom() {
+      zoomed = false;
+      lightbox.classList.remove('is-zoomed');
+      img.style.width = '';
+      img.style.height = '';
+      frame.scrollLeft = 0;
+      frame.scrollTop = 0;
+    }
+
+    // Show the photo at `next` × its full size (capped at 100%), keeping the point under
+    // (clientX, clientY) in place. Zooming out to the fitted size or below returns to fit.
+    function zoomTo(next, clientX, clientY) {
+      if (img.classList.contains('is-loading') || !img.naturalWidth) return;
+      const target = Math.min(1, next);
+      if (target <= fitScale() * 1.02) {
+        if (zoomed) unzoom();
+        return;
+      }
+      const box = frame.getBoundingClientRect();
+      const cx = clientX === undefined ? box.left + box.width / 2 : clientX;
+      const cy = clientY === undefined ? box.top + box.height / 2 : clientY;
+      const before = img.getBoundingClientRect();
+      const fx = Math.min(1, Math.max(0, (cx - before.left) / before.width));
+      const fy = Math.min(1, Math.max(0, (cy - before.top) / before.height));
+      zoomed = true;
+      scale = target;
+      lightbox.classList.add('is-zoomed');
+      img.style.width = `${img.naturalWidth * target}px`;
+      img.style.height = `${img.naturalHeight * target}px`;
+      const after = img.getBoundingClientRect();
+      frame.scrollLeft += after.left + fx * after.width - cx;
+      frame.scrollTop += after.top + fy * after.height - cy;
+    }
+
+    function setZoom(on, clientX, clientY) {
+      if (on === zoomed) return;
+      if (!on) unzoom();
+      else if (canZoom()) zoomTo(1, clientX, clientY);
     }
 
     function show() {
@@ -545,9 +578,36 @@
     });
     window.addEventListener('popstate', () => close({ fromPopstate: true }));
 
+    // Pinch to zoom: the scale follows the change in distance between two fingers,
+    // centred on the point between them.
+    let pinch = null;
+    const touchGap = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    lightbox.addEventListener('touchmove', (e) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const t = e.touches;
+      zoomTo(pinch.scale * (touchGap(t) / pinch.gap), (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2);
+    }, { passive: false });
+    lightbox.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) pinch = null;
+    });
+    // Keep iOS Safari from zooming the whole page instead.
+    document.addEventListener('gesturestart', (e) => {
+      if (!lightbox.hidden) e.preventDefault();
+    });
+    // Trackpad pinches arrive as ctrl + wheel.
+    lightbox.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey || lightbox.hidden) return;
+      e.preventDefault();
+      zoomTo((zoomed ? scale : fitScale()) * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
+    }, { passive: false });
+
     let touchX = null;
     let touchY = null;
     lightbox.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2 && !img.classList.contains('is-loading') && img.naturalWidth) {
+        pinch = { gap: touchGap(e.touches), scale: zoomed ? scale : fitScale() };
+      }
       if (e.touches.length !== 1) { touchX = null; return; }
       touchX = e.touches[0].clientX;
       touchY = e.touches[0].clientY;
