@@ -51,6 +51,13 @@ function getSiteUrl(config, repoSlug) {
 // js/app.js, so — unlike the rest of the page's config-driven content,
 // which is rendered client-side — these tags have to be baked into
 // dist/index.html at build time.
+// The display picture (config.avatar) doubles as the favicon and home-screen icon.
+function buildIconTags(config) {
+  if (!config.avatar) return '';
+  const href = escapeAttr(config.avatar);
+  return [`<link rel="icon" href="${href}">`, `<link rel="apple-touch-icon" href="${href}">`].join('\n');
+}
+
 function buildOgMeta(config, entries, siteUrl) {
   const title = config.photographerName ? `${config.photographerName} — Photography` : 'Photography Portfolio';
   const description = config.tagline || 'A photography portfolio.';
@@ -166,7 +173,7 @@ function copyStaticFiles(repoSlug, branch, entries) {
   const siteUrl = getSiteUrl(config, repoSlug);
   const indexHtml = fs
     .readFileSync(path.join(ROOT, 'index.html'), 'utf8')
-    .replace('<!--OG_META-->', buildOgMeta(config, entries, siteUrl));
+    .replace('<!--OG_META-->', [buildOgMeta(config, entries, siteUrl), buildIconTags(config)].filter(Boolean).join('\n'));
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), indexHtml);
 
   for (const dir of ['css', 'js']) {
