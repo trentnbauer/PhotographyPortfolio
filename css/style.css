@@ -7,8 +7,6 @@
   --rule: oklch(0.18 0.01 60 / .14);
   --img-bg: oklch(0.9 0.006 85);
   --lb-bg: oklch(0.985 0.004 85 / .98);
-  --new: oklch(0.72 0.15 55);
-  --new-fg: oklch(0.17 0.012 50);
   --font-display: 'Archivo', sans-serif;
   --font-body: 'Archivo', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -225,7 +223,7 @@ body[data-view="index"] .brand { visibility: hidden; }
 .grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px 12px;
+  gap: 16px;
 }
 #gallery { margin: 48px var(--pad) var(--pad); }
 .grid::after { content: ''; flex-grow: 12; flex-basis: 0; }
@@ -239,7 +237,6 @@ body[data-view="index"] .brand { visibility: hidden; }
 .grid-large .tile { flex-basis: calc(var(--ar) * var(--tile-large)); }
 
 .tile-inner { position: relative; display: block; }
-.tile.is-new .tile-inner { outline: 2px solid var(--new); outline-offset: 3px; }
 
 .tile img {
   width: 100%;
@@ -253,8 +250,8 @@ body[data-view="index"] .brand { visibility: hidden; }
   position: absolute;
   top: 8px;
   left: 8px;
-  background: var(--new);
-  color: var(--new-fg);
+  background: var(--accent-text);
+  color: var(--bg);
   font: 600 10px var(--font-mono);
   letter-spacing: .14em;
   padding: 4px 6px;
@@ -286,6 +283,23 @@ body[data-view="index"] .brand { visibility: hidden; }
   text-transform: uppercase;
 }
 
+.favs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 48px;
+  border-bottom: 1px solid var(--fg);
+  padding-bottom: 40px;
+}
+.favs-count {
+  margin-bottom: 10px;
+  font: 400 12px var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .view-gear {
   padding: 40px var(--pad) 120px;
   display: flex;
@@ -313,12 +327,17 @@ body[data-view="index"] .brand { visibility: hidden; }
 
 .gear-group {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   align-items: start;
 }
 
-.gear-label { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; }
+.gear-label { display: flex; flex-direction: row; align-items: baseline; gap: 16px; padding-top: 14px; }
+.gear-num {
+  font: 400 12px var(--font-mono);
+  letter-spacing: .08em;
+  color: var(--muted);
+}
 .gear-title {
   font: 500 12px var(--font-mono);
   letter-spacing: .12em;
@@ -326,6 +345,7 @@ body[data-view="index"] .brand { visibility: hidden; }
   color: var(--accent-text);
 }
 .gear-count {
+  margin-left: auto;
   font: 400 12px var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -483,6 +503,7 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
 .lb-bottom {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
   gap: 16px;
   padding: 16px 32px 20px;
   font-weight: 400;
@@ -490,10 +511,34 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   color: var(--muted);
 }
 
+/* Caption: the photo's title over a row of metadata fields, lined up under the photo
+   (js/app.js sets the left margin and vertical offset to match the displayed photo). */
+.lb-caption { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lb-title {
+  font: 400 17px var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg);
+}
+.lb-fields { display: flex; flex-wrap: wrap; gap: 12px 56px; }
+.lb-field { display: flex; flex-direction: column; gap: 4px; min-width: 96px; }
+.lb-field-label {
+  font: 400 10px var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lb-field-value {
+  font: 500 12px var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
 /* ---------- Mid widths ---------- */
 
 @media (max-width: 1100px) {
-  .gear-group { grid-template-columns: 200px minmax(0, 1fr); gap: 32px; }
   .gear-items { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -523,7 +568,7 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   .menu-panel { margin-top: 4px; }
 
   #gallery { margin: 24px 12px 24px; }
-  .grid { gap: 12px 8px; }
+  .grid { gap: 8px; }
   /* Every row fills the screen width on phones, even a lone portrait. Flex
      items whose grow factors sum below 1 only take that fraction of the spare
      space, so scale them up (proportions are unchanged). */
@@ -533,7 +578,9 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
 
   .view-favs { padding: 16px 12px 24px; gap: 20px; }
   .view-favs .back-link { margin-left: 8px; }
-  .view-favs .page-title { margin: 0 8px; font-size: 64px; }
+  .view-favs .page-title { font-size: 64px; }
+  .favs-head { flex-direction: column; align-items: stretch; gap: 12px; margin: 0 8px; padding-bottom: 20px; }
+  .favs-count { margin-bottom: 0; }
   .back-link { font-size: 11px; }
 
   .view-gear { padding: 16px 20px 56px; gap: 28px; }
@@ -565,6 +612,9 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   .lightbox .lb-side { display: none; }
   .lightbox .lb-under { display: block; width: 56px; height: 48px; font-size: 20px; }
   .lb-bottom { display: grid; grid-template-columns: auto 1fr auto; align-items: center; padding: 8px 8px 16px; font-size: 10px; }
-  .lb-caption { text-align: center; }
+  .lb-caption { text-align: center; align-items: center; }
+  .lb-title { font-size: 15px; }
+  .lb-fields { justify-content: center; gap: 8px 20px; }
+  .lb-field { min-width: 0; }
   .lb-hint { display: none; }
 }

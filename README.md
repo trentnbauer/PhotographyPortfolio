@@ -69,8 +69,9 @@ That's it.
 
 ### Captions
 
-The photo viewer shows each photo's own metadata: its title (or description),
-camera, lens and exposure. Details written by film scanners (e.g. *Noritsu EZ
+The photo viewer shows each photo's own metadata under the photo: its title (or
+description), then Camera, Lens, Aperture, Shutter and ISO, with `-` for any
+that are missing (the row is hidden if all five are). Details written by film scanners (e.g. *Noritsu EZ
 Controller*) are ignored. To add a caption, fill in the fields in Lightroom or
 Photoshop (**File → File Info**) before uploading, or use
 [ExifTool](https://exiftool.org):

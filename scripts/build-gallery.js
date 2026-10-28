@@ -237,16 +237,27 @@ function metaText(value) {
   return String(value).replace(/\0/g, '').trim();
 }
 
+function formatAperture(m) {
+  return m.FNumber ? `f/${Number(m.FNumber.toFixed(1))}` : '';
+}
+
+function formatShutter(m) {
+  const t = m.ExposureTime;
+  if (!t) return '';
+  return t >= 1 ? `${Number(t.toFixed(1))}s` : `1/${Math.round(1 / t)}s`;
+}
+
+function formatIso(m) {
+  const iso = m.ISO || m.ISOSpeedRatings;
+  return iso ? String(Array.isArray(iso) ? iso[0] : iso) : '';
+}
+
 function formatExposure(m) {
   const parts = [];
   if (m.FocalLength) parts.push(`${Math.round(m.FocalLength)}mm`);
-  if (m.FNumber) parts.push(`f/${Number(m.FNumber.toFixed(1))}`);
-  if (m.ExposureTime) {
-    const t = m.ExposureTime;
-    parts.push(t >= 1 ? `${Number(t.toFixed(1))}s` : `1/${Math.round(1 / t)}s`);
-  }
-  const iso = m.ISO || m.ISOSpeedRatings;
-  if (iso) parts.push(`ISO ${Array.isArray(iso) ? iso[0] : iso}`);
+  if (m.FNumber) parts.push(formatAperture(m));
+  if (m.ExposureTime) parts.push(formatShutter(m));
+  if (formatIso(m)) parts.push(`ISO ${formatIso(m)}`);
   return parts.join(' ');
 }
 
@@ -268,6 +279,9 @@ async function readPhotoMetadata(filePath) {
     camera,
     lens: fromScanner ? '' : metaText(m.LensModel) || metaText(m.Lens),
     exposure: fromScanner ? '' : formatExposure(m),
+    aperture: fromScanner ? '' : formatAperture(m),
+    shutter: fromScanner ? '' : formatShutter(m),
+    iso: fromScanner ? '' : formatIso(m),
   };
   // A scanner's own text (e.g. its model in the description) isn't a caption either.
   ['title', 'description'].forEach((key) => {
@@ -390,7 +404,7 @@ function cacheDir(hash) {
 
 // Bump when the cached per-photo data changes shape, so older cache entries
 // are rebuilt (which re-reads each original once).
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 function readCached(hash) {
   try {
@@ -553,6 +567,9 @@ async function processImages(repoSlug, branch) {
       camera: info.camera,
       lens: info.lens,
       exposure: info.exposure,
+      aperture: info.aperture,
+      shutter: info.shutter,
+      iso: info.iso,
       favourite: photo.favourite || undefined,
     };
   });
