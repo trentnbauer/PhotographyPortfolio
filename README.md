@@ -114,8 +114,8 @@ All in [`config.yaml`](config.yaml):
 - **Order:** newest upload first.
 - **NEW tags:** returning visitors see an orange NEW tag on photos added since
   their last visit.
-- **Zoom:** in the viewer, click a photo to see it at 100% and drag to look
-  around.
+- **Zoom:** in the viewer, click or tap a photo to see it at 100%, or pinch
+  (phone or trackpad) to zoom in and out; drag or swipe to look around.
 - **Updates:** the site rebuilds on every change to the repo and every hour
   (to pick up new release photos).
 - **Committed photos:** photos in an `images/` folder in the repo (and
