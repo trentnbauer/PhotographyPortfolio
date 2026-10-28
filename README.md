@@ -116,6 +116,7 @@ All in [`config.yaml`](config.yaml):
   their last visit.
 - **Zoom:** in the viewer, click or tap a photo to see it at 100%, or pinch
   (phone or trackpad) to zoom in and out; drag or swipe to look around.
+- **Save:** the viewer's Save button downloads the original, full-size file.
 - **Updates:** the site rebuilds on every change to the repo and every hour
   (to pick up new release photos).
 - **Committed photos:** photos in an `images/` folder in the repo (and
