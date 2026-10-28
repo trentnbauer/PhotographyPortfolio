@@ -333,11 +333,6 @@ body[data-view="index"] .brand { visibility: hidden; }
 }
 
 .gear-label { display: flex; flex-direction: row; align-items: baseline; gap: 16px; padding-top: 14px; }
-.gear-num {
-  font: 400 12px var(--font-mono);
-  letter-spacing: .08em;
-  color: var(--muted);
-}
 .gear-title {
   font: 500 12px var(--font-mono);
   letter-spacing: .12em;
