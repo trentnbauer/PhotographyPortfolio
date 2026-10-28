@@ -342,7 +342,7 @@
     intro.hidden = !gear.intro;
 
     groupsEl.textContent = '';
-    gear.groups.forEach((group, i) => {
+    gear.groups.forEach((group) => {
       const items = group.items.map((item) => el('div', { className: 'gear-item' }, [
         el('div', { className: 'gear-text' }, [
           item.url
@@ -354,7 +354,6 @@
       ]));
       groupsEl.append(el('div', { className: 'gear-group' }, [
         el('div', { className: 'gear-label' }, [
-          el('span', { className: 'gear-num', text: String(i + 1).padStart(2, '0') }),
           el('span', { className: 'gear-title', text: group.title }),
           el('span', { className: 'gear-count', text: gearCount(group.items) }),
         ]),
