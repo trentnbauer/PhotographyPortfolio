@@ -36,7 +36,8 @@ pages:
     shortLabel: Home
 
 # Extra links in the nav, in order. Add as many as you like: when the row gets
-# too long, everything after Index and Favourites folds into a Menu.
+# too long (and always on phones), they fold into a ☰ Menu; Index, Favourites
+# and Gear always stay visible.
 headerLinks:
   - label: Instagram
     shortLabel: IG

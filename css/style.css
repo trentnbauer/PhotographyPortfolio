@@ -565,7 +565,7 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   .site-nav { gap: 0; padding: 4px 20px 0; font-size: 11px; }
   .site-nav .nav-item { height: 44px; padding: 0 8px; border-bottom: 0; display: flex; align-items: center; }
   .site-nav .nav-item[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
-  .menu-panel { margin-top: 4px; }
+  .menu-panel { margin-top: 4px; left: auto; right: 0; transform: none; }
 
   #gallery { margin: 24px 12px 24px; }
   .grid { gap: 8px; }
