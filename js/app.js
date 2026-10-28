@@ -170,13 +170,12 @@
       short: shortLabel(pages[key] && pages[key].shortLabel, short),
       hover: pages[key] && pages[key].hover,
     });
-    // Favourites only appears once there's at least one favourite photo.
+    // The site's own pages are always visible. Favourites only appears once there's at least
+    // one favourite photo, and Gear only when gear.md has something in it.
     const primary = [page('index', 'index', '#', 'Index', 'Home')];
     if (hasFavourites) primary.push(page('favourites', 'favs', '#favourites', 'Favourites', 'Favs'));
-    // Gear likewise only appears when gear.md has something in it.
-    const items = primary.concat(
-      hasGear ? [page('gear', 'gear', '#gear', 'Gear', 'Gear')] : [],
-    ).concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url, hover: l.hover })));
+    if (hasGear) primary.push(page('gear', 'gear', '#gear', 'Gear', 'Gear'));
+    const items = primary.concat(headerLinks(config).map((l) => ({ label: l.label, short: shortLabel(l.shortLabel, l.label), url: l.url, hover: l.hover })));
 
     const labelled = (item) => [
       el('span', { className: 'l-long', text: item.url ? `${item.label} ↗` : item.label }),
@@ -186,7 +185,8 @@
       ? el('a', { className, href: item.url, target: '_blank', rel: 'noopener noreferrer', title: item.hover }, labelled(item))
       : el('a', { className, href: item.hash, 'data-view': item.view, title: item.hover }, labelled(item));
 
-    // Index and Favourites always stay visible; everything else folds into the menu when the row is too long.
+    // The pages always stay visible; the outside links fold into the menu on phones, and on
+    // wider screens when the row is too long.
     nav.textContent = '';
     items.forEach((item, i) => nav.append(navLink(item, i < primary.length ? 'nav-item' : 'nav-item nav-extra')));
 
@@ -219,14 +219,17 @@
       if (e.key === 'Escape' && !panel.hidden) setMenu(false);
     });
 
+    const phone = window.matchMedia('(max-width: 640px)');
+    const hasExtras = items.length > primary.length;
     function layout() {
       if (nav.offsetParent === null) return;
       nav.classList.remove('is-collapsed');
       nav.classList.add('is-measuring');
       const overflowing = nav.scrollWidth > nav.clientWidth + 1;
       nav.classList.remove('is-measuring');
-      nav.classList.toggle('is-collapsed', overflowing);
-      if (!overflowing) setMenu(false);
+      const collapse = hasExtras && (phone.matches || overflowing);
+      nav.classList.toggle('is-collapsed', collapse);
+      if (!collapse) setMenu(false);
     }
     let resizeFrame = 0;
     window.addEventListener('resize', () => {
