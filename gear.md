@@ -15,13 +15,13 @@ Remove every item to hide the Gear page and its nav link.
 - MD 50mm f1.7 `Lens`
 - MD Tele Rokkor 135mm f2.8 `Lens`
 
-## Pentax
-- Pentax 6x7, non-MLU `Body`
-- SMC Takumar 150mm f2.8`Lens`
-
 ## Leitz
 - 1951 Leica IIIc `Body`
 - Elmar 3.5 (red scale) `Lens`
+
+## Pentax
+- Pentax 6x7, non-MLU `Body`
+- SMC Takumar 150mm f2.8`Lens`
 
 ## FED / Soviet
 - 1956 Zenit C `Body`
