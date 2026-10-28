@@ -306,7 +306,10 @@
       });
       const fresh = isNew && isNew(entry);
       const inner = el('span', { className: 'tile-inner' }, [img]);
-      if (fresh) inner.append(el('span', { className: 'new-badge', text: 'NEW' }));
+      if (fresh) {
+        const added = entry.date ? new Date(entry.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }).toUpperCase() : '';
+        inner.append(el('span', { className: 'new-badge', text: added ? `NEW · ${added}` : 'NEW' }));
+      }
       const tile = el('a', { className: fresh ? 'tile is-new' : 'tile', href: entry.original || entry.file }, [inner]);
       tile.style.setProperty('--ar', ar.toFixed(4));
       tile.addEventListener('click', (e) => {
@@ -336,7 +339,7 @@
     intro.hidden = !gear.intro;
 
     groupsEl.textContent = '';
-    gear.groups.forEach((group) => {
+    gear.groups.forEach((group, i) => {
       const items = group.items.map((item) => el('div', { className: 'gear-item' }, [
         el('div', { className: 'gear-text' }, [
           item.url
@@ -348,7 +351,8 @@
       ]));
       groupsEl.append(el('div', { className: 'gear-group' }, [
         el('div', { className: 'gear-label' }, [
-          el('span', { className: 'gear-title', text: `▶ ${group.title}` }),
+          el('span', { className: 'gear-num', text: String(i + 1).padStart(2, '0') }),
+          el('span', { className: 'gear-title', text: group.title }),
           el('span', { className: 'gear-count', text: gearCount(group.items) }),
         ]),
         el('div', { className: 'gear-items' }, items),
@@ -403,6 +407,49 @@
       img.style.height = '';
       frame.scrollLeft = 0;
       frame.scrollTop = 0;
+      alignCaption();
+    }
+
+    // The caption comes only from the photo's own metadata (read at build time): its title,
+    // then Camera · Lens · Aperture · Shutter · ISO, with "-" for any missing value. The fields
+    // row is left out when all five are missing. Older manifests only have the combined
+    // `exposure` string, so aperture, shutter and ISO fall back to parsing that.
+    function renderCaption(entry) {
+      const exposure = entry.exposure || '';
+      const fromExposure = (re, group = 0) => (exposure.match(re) || [])[group] || '';
+      const fields = [
+        ['Camera', entry.camera],
+        ['Lens', entry.lens],
+        ['Aperture', entry.aperture || fromExposure(/f\/[\d.]+/)],
+        ['Shutter', entry.shutter || fromExposure(/(?:1\/\d+|[\d.]+)s\b/)],
+        ['ISO', entry.iso || fromExposure(/ISO (\d+)/, 1)],
+      ];
+      caption.textContent = '';
+      const title = entry.title || entry.description;
+      if (title) caption.append(el('span', { className: 'lb-title', text: title }));
+      if (fields.some(([, value]) => value)) {
+        caption.append(el('span', { className: 'lb-fields' }, fields.map(([label, value]) => el('span', { className: 'lb-field' }, [
+          el('span', { className: 'lb-field-label', text: label }),
+          el('span', { className: 'lb-field-value', text: value ? String(value) : '-' }),
+        ]))));
+      }
+      alignCaption();
+    }
+
+    // On wider screens, line the caption up with the photo: its left edge under the photo's,
+    // and its top 16px below the photo's bottom. While zoomed it sits in its normal place.
+    const wideScreen = window.matchMedia('(min-width: 641px)');
+    function alignCaption() {
+      caption.style.marginLeft = '';
+      caption.style.transform = '';
+      if (lightbox.hidden || zoomed || !wideScreen.matches || !img.naturalWidth) return;
+      const row = caption.parentElement;
+      const rowBox = row.getBoundingClientRect();
+      const padLeft = parseFloat(getComputedStyle(row).paddingLeft) || 0;
+      const photo = img.getBoundingClientRect();
+      caption.style.marginLeft = `${Math.max(0, photo.left - rowBox.left - padLeft)}px`;
+      const dy = Math.min(0, photo.bottom + 16 - caption.getBoundingClientRect().top);
+      caption.style.transform = `translateY(${dy}px)`;
     }
 
     // Show the photo at `next` × its full size (capped at 100%), keeping the point under
@@ -459,12 +506,14 @@
         img.src = full;
         img.classList.remove('is-loading');
         spinner.hidden = true;
+        alignCaption();
       };
       original.onerror = () => {
         if (token !== loadToken) return;
         img.src = entry.file;
         img.classList.remove('is-loading');
         spinner.hidden = true;
+        alignCaption();
       };
       original.src = full;
       // Warm the cache for the neighbours so stepping through feels quick.
@@ -475,8 +524,7 @@
 
       const pad = (n) => String(n).padStart(2, '0');
       count.textContent = `${pad(index + 1)} / ${pad(list.length)}`;
-      // From the photo's own metadata (read at build time); empty when the file has none.
-      caption.textContent = [entry.title || entry.description, entry.camera, entry.lens, entry.exposure].filter(Boolean).join(' · ');
+      renderCaption(entry);
       hint.textContent = '← → Esc';
     }
 
@@ -570,7 +618,10 @@
       setZoom(!zoomed, e.clientX, e.clientY);
     });
     img.addEventListener('load', () => img.classList.toggle('can-zoom', canZoom()));
-    window.addEventListener('resize', () => img.classList.toggle('can-zoom', canZoom()));
+    window.addEventListener('resize', () => {
+      img.classList.toggle('can-zoom', canZoom());
+      alignCaption();
+    });
 
     document.addEventListener('keydown', (e) => {
       if (lightbox.hidden) return;
@@ -600,11 +651,13 @@
     document.addEventListener('gesturestart', (e) => {
       if (!lightbox.hidden) e.preventDefault();
     });
-    // Trackpad pinches arrive as ctrl + wheel.
+    // The mouse wheel zooms around the pointer; trackpad pinches arrive as ctrl + wheel and
+    // move in bigger steps.
     lightbox.addEventListener('wheel', (e) => {
-      if (!e.ctrlKey || lightbox.hidden) return;
+      if (lightbox.hidden || img.classList.contains('is-loading')) return;
       e.preventDefault();
-      zoomTo((zoomed ? scale : fitScale()) * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
+      const k = e.ctrlKey ? 0.01 : 0.0025;
+      zoomTo((zoomed ? scale : fitScale()) * Math.exp(-e.deltaY * k), e.clientX, e.clientY);
     }, { passive: false });
 
     let touchX = null;
@@ -652,6 +705,7 @@
     document.getElementById('empty-hint').hidden = manifest.length > 0;
     renderGrid(document.getElementById('gallery'), manifest, { isNew: newPhotoChecker(manifest), onOpen: openLightbox });
     renderGrid(document.getElementById('favs-gallery'), favourites, { onOpen: openLightbox });
+    document.getElementById('favs-count').textContent = `${favourites.length} ${favourites.length === 1 ? 'frame' : 'frames'}`;
   }
 
   init();
