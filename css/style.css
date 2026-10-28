@@ -405,8 +405,10 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   cursor: pointer;
 }
 
+.lb-actions { display: flex; align-items: center; gap: 28px; }
 .lb-close { min-height: 44px; padding: 0 4px; display: flex; align-items: center; gap: 10px; }
 .lb-x { font-size: 20px; line-height: 1; }
+.lb-save { min-height: 44px; padding: 0 4px; display: flex; align-items: center; gap: 10px; }
 
 .lb-stage {
   display: grid;
@@ -552,7 +554,10 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
 
   .lightbox { font-size: 11px; }
   .lb-top { padding: 4px 8px 4px 20px; }
+  .lb-actions { gap: 0; }
   .lb-close { width: 44px; height: 44px; justify-content: center; padding: 0; }
+  .lb-save { width: 44px; height: 44px; justify-content: center; padding: 0; }
+  .lb-save-icon { width: 20px; height: 20px; }
   .lb-x { font-size: 24px; }
   .lb-stage { grid-template-columns: minmax(0, 1fr); padding: 0 8px; }
   .lightbox .lb-side { display: none; }

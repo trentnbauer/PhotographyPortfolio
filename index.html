@@ -72,7 +72,10 @@
 <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
   <div class="lb-top">
     <span id="lb-count"></span>
-    <button id="lb-close" class="lb-close" type="button" aria-label="Close"><span class="l-long">Close</span> <span class="lb-x">&times;</span></button>
+    <span class="lb-actions">
+      <a id="lb-save" class="lb-save" target="_blank" rel="noopener" aria-label="Save original photo"><span class="l-long">Save</span> <svg class="lb-save-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"></path></svg></a>
+      <button id="lb-close" class="lb-close" type="button" aria-label="Close"><span class="l-long">Close</span> <span class="lb-x">&times;</span></button>
+    </span>
   </div>
   <div class="lb-stage">
     <button class="lb-arrow lb-side" data-step="-1" type="button" aria-label="Previous photo">&larr;</button>

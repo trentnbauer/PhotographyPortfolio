@@ -373,6 +373,7 @@
     const count = document.getElementById('lb-count');
     const caption = document.getElementById('lb-caption');
     const hint = document.getElementById('lb-hint');
+    const save = document.getElementById('lb-save');
     const frame = img.parentElement;
     let list = [];
     let index = 0;
@@ -406,6 +407,10 @@
       const entry = list[index];
       const token = ++loadToken;
       const full = entry.original || entry.file;
+      // Save downloads the untouched original. Release files are served as downloads; a
+      // committed photo opens in a new tab instead, from where it can be saved.
+      save.href = full;
+      save.setAttribute('download', entry.name || '');
       setZoom(false);
       img.alt = entry.alt || '';
       // Show the grid thumbnail (usually already cached) blurred under the spinner while the
