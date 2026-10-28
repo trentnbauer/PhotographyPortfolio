@@ -18,11 +18,13 @@ fonts:
   body: Archivo           # bio and general text
   mono: JetBrains Mono    # small uppercase labels, nav, captions
 
-# Display picture next to your name, also used as the browser-tab icon.
-# Remove the line to hide it (the tab then shows a 📷 camera emoji).
+# Display picture next to your name. Remove the line to hide it.
 avatar: https://raw.githubusercontent.com/trentnbauer/PhotographyPortfolio/bb9f80a3373f516c24b7e3fd2ef58edbd0f9ae1b/dp.jpg
 # Shape of the display picture next to your name: circle or square.
 avatarShape: circle
+# Browser-tab icon: avatar (your display picture) or camera (a 📷 emoji).
+# Without a display picture it's always the camera.
+favicon: avatar
 
 # The home page's nav label. "hover" (optional) is the tooltip shown when the
 # mouse rests on a nav item. Favourites and Gear aren't listed: they appear

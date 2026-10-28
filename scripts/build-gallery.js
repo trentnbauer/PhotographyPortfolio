@@ -52,13 +52,15 @@ function getSiteUrl(config, repoSlug) {
 // which is rendered client-side — these tags have to be baked into
 // dist/index.html at build time.
 // The display picture (config.avatar) doubles as the favicon and home-screen
-// icon. Without one, the tab shows a camera emoji instead.
+// icon, unless config.favicon is "camera"; without a picture the tab shows a
+// camera emoji instead.
 const FALLBACK_ICON = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📷</text></svg>'
 );
 
 function buildIconTags(config) {
-  if (!config.avatar) return `<link rel="icon" href="${escapeAttr(FALLBACK_ICON)}">`;
+  const useAvatar = config.avatar && String(config.favicon || 'avatar').toLowerCase() !== 'camera';
+  if (!useAvatar) return `<link rel="icon" href="${escapeAttr(FALLBACK_ICON)}">`;
   const href = escapeAttr(config.avatar);
   return [`<link rel="icon" href="${href}">`, `<link rel="apple-touch-icon" href="${href}">`].join('\n');
 }

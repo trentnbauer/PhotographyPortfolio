@@ -104,8 +104,9 @@ All in [`config.yaml`](config.yaml):
 | `siteUrl` | Your domain, for link previews. |
 | `accentColor` | Any CSS colour. |
 | `fonts` | Any Google Fonts names for headings, text and labels. |
-| `avatar` | Picture next to your name, also used as the browser-tab icon. Leave it out to hide it (the tab then shows 📷). |
+| `avatar` | Picture next to your name (leave out to hide). |
 | `avatarShape` | `circle` (default) or `square`. |
+| `favicon` | Browser-tab icon: `avatar` (your picture, the default) or `camera` (📷, also used when there's no picture). |
 | `headerLinks` | Extra nav links, each with a `label`, `shortLabel`, `url` and optional `hover` tooltip. |
 
 ### Good to know
