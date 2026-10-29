@@ -487,19 +487,30 @@ a.gear-name { text-decoration: underline; text-decoration-thickness: 1px; text-u
   filter: blur(14px);
 }
 
-.lb-spinner {
+.lb-progress {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  border: 2px solid var(--rule);
-  border-top-color: var(--fg);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
+  width: min(160px, 40%);
+  height: 2px;
+  transform: translateX(-50%);
+  background: var(--rule);
+  overflow: hidden;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+.lb-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--fg);
+  transition: width .15s linear;
+}
+/* No byte count available (e.g. the host blocks cross-origin reads): a sliding bar instead. */
+.lb-progress.is-indeterminate span {
+  width: 30%;
+  transition: none;
+  animation: lb-slide 1s ease-in-out infinite;
+}
+@keyframes lb-slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 
 .lb-bottom {
   display: flex;
