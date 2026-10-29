@@ -396,7 +396,8 @@
   function initLightbox() {
     const lightbox = document.getElementById('lightbox');
     const img = document.getElementById('lb-img');
-    const spinner = document.getElementById('lb-spinner');
+    const progress = document.getElementById('lb-progress');
+    const bar = progress.firstElementChild;
     const count = document.getElementById('lb-count');
     const caption = document.getElementById('lb-caption');
     const hint = document.getElementById('lb-hint');
@@ -405,6 +406,7 @@
     let list = [];
     let index = 0;
     let loadToken = 0;
+    let blobUrl = null;
     let historyPushed = false;
     let zoomed = false;
     let scale = 1;
@@ -506,6 +508,39 @@
       else if (canZoom()) zoomTo(1, clientX, clientY);
     }
 
+    // fraction 0–1, or null when the size is unknown.
+    function setProgress(fraction) {
+      progress.classList.toggle('is-indeterminate', fraction === null);
+      bar.style.width = fraction === null ? '' : `${fraction * 100}%`;
+    }
+
+    function releaseBlob() {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      blobUrl = null;
+    }
+
+    async function fetchWithProgress(url, token) {
+      const res = await fetch(url);
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const total = Number(res.headers.get('content-length')) || 0;
+      if (!total) setProgress(null);
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (token !== loadToken) {
+          reader.cancel();
+          throw new Error('superseded');
+        }
+        chunks.push(value);
+        received += value.length;
+        if (total) setProgress(Math.min(received / total, 1));
+      }
+      return URL.createObjectURL(new Blob(chunks, { type: res.headers.get('content-type') || '' }));
+    }
+
     function show() {
       const entry = list[index];
       const token = ++loadToken;
@@ -516,29 +551,38 @@
       save.setAttribute('download', entry.name || '');
       setZoom(false);
       img.alt = entry.alt || '';
-      // Show the grid thumbnail (usually already cached) blurred under the spinner while the
-      // untouched original loads, then swap the original in once it's decoded, so the sharp
+      // Show the grid thumbnail (usually already cached) blurred under the progress bar while
+      // the untouched original loads, then swap the original in once it's decoded, so the sharp
       // photo is always the original. The resized copy is used only if the original fails.
       img.classList.add('is-loading');
       img.src = entry.thumb || entry.file;
-      spinner.hidden = false;
-      const original = new Image();
-      original.onload = async () => {
-        try { await original.decode(); } catch (e) { /* show it anyway */ }
+      releaseBlob();
+      setProgress(0);
+      progress.hidden = false;
+      const finish = async (src) => {
+        const decoded = new Image();
+        decoded.src = src;
+        try { await decoded.decode(); } catch (e) { /* show it anyway */ }
         if (token !== loadToken) return;
-        img.src = full;
+        img.src = src;
         img.classList.remove('is-loading');
-        spinner.hidden = true;
+        progress.hidden = true;
         alignCaption();
       };
-      original.onerror = () => {
+      fetchWithProgress(full, token).then((url) => {
+        if (token !== loadToken) return URL.revokeObjectURL(url);
+        blobUrl = url;
+        finish(url);
+      }, () => {
         if (token !== loadToken) return;
-        img.src = entry.file;
-        img.classList.remove('is-loading');
-        spinner.hidden = true;
-        alignCaption();
-      };
-      original.src = full;
+        // Hosts without CORS headers (release downloads) can't be read by fetch, so load
+        // the plain way with a progress bar that only shows something is happening.
+        setProgress(null);
+        const original = new Image();
+        original.onload = () => finish(full);
+        original.onerror = () => finish(entry.file);
+        original.src = full;
+      });
       // Warm the cache for the neighbours so stepping through feels quick.
       [1, -1].forEach((d) => {
         const next = list[(index + d + list.length) % list.length];
@@ -580,7 +624,8 @@
       lightbox.hidden = true;
       bodyScrollLock.unlock();
       img.removeAttribute('src');
-      spinner.hidden = true;
+      releaseBlob();
+      progress.hidden = true;
       resetViewportZoom();
       if (historyPushed) {
         historyPushed = false;
