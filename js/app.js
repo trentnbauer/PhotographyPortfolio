@@ -397,7 +397,7 @@
     const lightbox = document.getElementById('lightbox');
     const img = document.getElementById('lb-img');
     const progress = document.getElementById('lb-progress');
-    const bar = progress.firstElementChild;
+    const bar = progress.querySelector('span');
     const count = document.getElementById('lb-count');
     const caption = document.getElementById('lb-caption');
     const hint = document.getElementById('lb-hint');
