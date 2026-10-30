@@ -31,5 +31,6 @@ Remove every item to hide the Gear page and its nav link.
 - Helios 44 58mm f2 M39 `Lens`
 
 ## Tools
-- [FilmCalc](https://filmcalc.app) `App` — Price of shooting film — handy for comparing stocks or labs.
+- [FilmCalc](https://filmcalc.app) `App` — Price of shooting film — handy for comparing stocks or labs (Designed by me!)
 - [Light Meter](https://play.google.com/store/apps/details?id=com.willblaschko.android.lightmeterv2.pro) `App` — For the cameras without a built-in meter.
+- [White Border](https://addwhiteborder.com/) `App` — Add a white border to images.
