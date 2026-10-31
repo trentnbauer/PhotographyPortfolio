@@ -411,8 +411,8 @@
     let zoomed = false;
     let scale = 1;
 
-    // Clicking the loaded original shows it at 50% (or double the fitted size, if that's more),
-    // keeping the clicked point under the pointer; the frame then scrolls to pan. Clicking again
+    // Clicking the loaded original fills the frame with it (on a phone, a landscape photo
+    // fills the screen's height), capped at 50% and never less than double the fitted size, keeping the clicked point under the pointer; the frame then scrolls to pan. Clicking again
     // fits it. Pinching, the wheel or a trackpad pinch set any zoom between fit and 100%.
     function canZoom() {
       if (img.classList.contains('is-loading') || !img.naturalWidth) return false;
@@ -505,7 +505,11 @@
     function setZoom(on, clientX, clientY) {
       if (on === zoomed) return;
       if (!on) unzoom();
-      else if (canZoom()) zoomTo(Math.max(0.5, fitScale() * 2), clientX, clientY);
+      else if (canZoom()) {
+        const box = frame.getBoundingClientRect();
+        const fill = Math.max(box.width / img.naturalWidth, box.height / img.naturalHeight);
+        zoomTo(Math.max(fitScale() * 2, Math.min(0.5, fill)), clientX, clientY);
+      }
     }
 
     // fraction 0–1, or null when the size is unknown.
